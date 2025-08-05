@@ -1,45 +1,75 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
 
 function Home() {
-  const [socket, setSocket] = useState<Socket | null>(null);
   const [messages, setMessages] = useState<string[]>([]);
-  const [isConnected, setIsConnected] = useState(false);
+
+  const socket = useRef<Socket | null>(null);
+  const isConnected = !!socket?.current?.connected;
+
+  const connectSocket = useCallback(() => {
+    if (!socket.current) {
+      const _socket = io("http://localhost:8000", {});
+
+      _socket.on("connect", () => {
+        console.log("Connected:", _socket.id);
+        setMessages((prev) => [...prev, `Connected: ${_socket.id}`]);
+      });
+
+      _socket.on("events", (data) => {
+        console.log("Received:", data);
+        setMessages((prev) => [...prev, `Received: ${data}`]);
+      });
+
+      _socket.on("disconnect", () => {
+        console.log("Disconnected");
+        setMessages((prev) => [...prev, "Disconnected"]);
+      });
+
+      socket.current = _socket;
+    }
+  }, []);
+
+  const disconnectSocket = useCallback(() => {
+    socket.current?.disconnect?.();
+  }, []);
 
   useEffect(() => {
     // Initialize socket connection
-    const socketInstance = io("http://localhost:8000");
-    setSocket(socketInstance);
+    //const socketInstance = io("http://localhost:8000", {});
+    //setSocket(socketInstance);
 
     // Connection event handlers
-    socketInstance.on("connect", () => {
-      console.log("Connected:", socketInstance.id);
-      setIsConnected(true);
-      setMessages((prev) => [...prev, `Connected: ${socketInstance.id}`]);
-    });
+    //socketInstance.on("connect", () => {
+    //  console.log("Connected:", socketInstance.id);
+    //  setIsConnected(true);
+    //  setMessages((prev) => [...prev, `Connected: ${socketInstance.id}`]);
+    //});
 
-    socketInstance.on("events", (data) => {
-      console.log("Received:", data);
-      setMessages((prev) => [...prev, `Received: ${data}`]);
-    });
+    //socketInstance.on("events", (data) => {
+    //  console.log("Received:", data);
+    //  setMessages((prev) => [...prev, `Received: ${data}`]);
+    //});
 
-    socketInstance.on("disconnect", () => {
-      console.log("Disconnected");
-      setIsConnected(false);
-      setMessages((prev) => [...prev, "Disconnected"]);
-    });
+    //socketInstance.on("disconnect", () => {
+    //  console.log("Disconnected");
+    //  setIsConnected(false);
+    //  setMessages((prev) => [...prev, "Disconnected"]);
+    //});
 
     // Cleanup on unmount
     return () => {
-      socketInstance.disconnect();
+      socket?.current?.disconnect?.();
+
+      //socketInstance.disconnect();
     };
   }, []);
 
   const sendMessage = () => {
-    if (socket && isConnected) {
-      socket.emit("events", "Hello from Next.js client!");
+    if (socket.current && isConnected) {
+      socket.current.emit("events", "Hello from Next.js client!");
     }
   };
 
@@ -47,9 +77,14 @@ function Home() {
     <div style={{ padding: "20px" }}>
       <h1>WebSocket Test</h1>
       <p>Status: {isConnected ? "Connected" : "Disconnected"}</p>
-      <button onClick={sendMessage} disabled={!isConnected}>
-        Send Test Message
-      </button>
+      {isConnected ? (
+        <div className=" gap-3 flex flex-col">
+          <button onClick={sendMessage}>Send Test Message</button>
+          <button onClick={disconnectSocket}>Disconnect</button>
+        </div>
+      ) : (
+        <button onClick={connectSocket}>Connect</button>
+      )}
       <div style={{ marginTop: "20px" }}>
         <h3>Messages:</h3>
         {messages.map((message, index) => (
