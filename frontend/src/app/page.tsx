@@ -28,6 +28,26 @@ function Home() {
         setMessages((prev) => [...prev, "Disconnected"]);
       });
 
+      _socket.on("connect_error", (err) => {
+        console.error("Connection error:", err);
+        setMessages((prev) => [...prev, `Connection error: ${err.message}`]);
+      });
+
+      _socket.on("connect_timeout", (timeout) => {
+        console.error("Connection timeout:", timeout);
+        setMessages((prev) => [...prev, `Connection timeout: ${timeout}`]);
+      });
+
+      _socket.on("reconnect_attempt", (attempt) => {
+        console.log("Reconnecting attempt:", attempt);
+        setMessages((prev) => [...prev, `Reconnecting attempt: ${attempt}`]);
+      });
+
+      _socket.on("reconnect_failed", () => {
+        console.error("Reconnection failed");
+        setMessages((prev) => [...prev, "Reconnection failed"]);
+      });
+
       socket.current = _socket;
     }
   }, []);
@@ -70,6 +90,8 @@ function Home() {
   const sendMessage = () => {
     if (socket.current && isConnected) {
       socket.current.emit("events", "Hello from Next.js client!");
+      console.log("Message sent: Hello from Next.js client!");
+      setMessages((prev) => [...prev, "Sent: Hello from Next.js client!"]);
     }
   };
 
