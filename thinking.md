@@ -1,9 +1,6 @@
-- .env variable
-- Don't add to gitignore
-- add the api key
-- make backend read the api key
+✅
 
-- install dependencies
+- install dependencies ✅
 - connect with a socket to the backend as in the example
 - Create a websocket endpoint
 - Connect to it with postman
