@@ -6,7 +6,13 @@
 - Connect to it with the react app ✅
 - Frontend: create buttons to manage the state of the connection and sending messages ✅
 - Ping Pong ✅
-- Read the server to server connection documentation
+- Read the server to server connection documentation ✅
+- Handle the connection at test2 the same way as home screen (With states) but to google instead
+- Record a voice with microphone
+- convert the voice to base64
+- send the voice to google, and wait for the response
+- make it live some how
+
 - From frontend, send the same voice base64 request to the websocket endpoint
 - Make the backend receive this base64 request
 - make the backend send this base64 request to google, and return the response

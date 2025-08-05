@@ -1,14 +1,15 @@
 "use client";
-
-import React from "react";
-import { GoogleGenAI, LiveServerMessage, Modality } from "@google/genai/node";
+import {
+  GoogleGenAI,
+  LiveServerMessage,
+  Modality,
+  Session,
+} from "@google/genai/web";
 import * as fs from "node:fs";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { WaveFile } from "wavefile"; // npm install wavefile
 import { base64Text } from "./base64Text";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { io, Socket } from "socket.io-client";
 
-/*
 const ai = new GoogleGenAI({
   apiKey: process.env.GOOGLE_API_KEY,
 });
@@ -20,7 +21,7 @@ const config = {
   systemInstruction:
     "You are a helpful assistant and answer in a friendly tone.",
 };
-*/
+
 type MessageType = undefined | LiveServerMessage;
 
 //console.log("api key", process.env.GOOGLE_API_KEY);
@@ -28,9 +29,37 @@ type MessageType = undefined | LiveServerMessage;
 const Test = () => {
   const [messages, setMessages] = useState<string[]>([]);
 
-  const socket = useRef<Socket | null>(null);
-  const isConnected = !!socket?.current?.connected;
+  //const socket = useRef<Socket | null>(null);
+  //const isConnected = !!socket?.current?.connected;
 
+  const session = useRef<Session | null>(null);
+  const isConnected = !!session?.current;
+  const [responseQueue, setResponseQueue] = useState<MessageType[]>([]);
+
+  const connectSocket = useCallback(async () => {
+    const _session = await ai.live.connect({
+      model: model,
+      callbacks: {
+        onopen: function () {
+          console.debug("Opened");
+        },
+        onmessage: function (message) {
+          responseQueue.push(message);
+        },
+        onerror: function (e) {
+          console.debug("Error:", e.message);
+        },
+        onclose: function (e) {
+          console.debug("Close:", e.reason);
+        },
+      },
+      config: config,
+    });
+
+    session.current = _session;
+  }, [responseQueue]);
+
+  /*
   const connectSocket = useCallback(() => {
     if (!socket?.current?.connected) {
       const _socket = io("http://localhost:8000", {});
@@ -72,21 +101,28 @@ const Test = () => {
 
       socket.current = _socket;
     }
-  }, []);
+  }, []);*/
 
   const disconnectSocket = useCallback(() => {
-    socket.current?.disconnect?.();
+    session?.current?.close?.();
   }, []);
+
+  /*
+  const disconnectSocket = useCallback(() => {
+    socket.current?.disconnect?.();
+  }, []);*/
 
   useEffect(() => {
     // Cleanup on unmount
     return () => {
-      socket?.current?.disconnect?.();
+      //socket?.current?.disconnect?.();
+      session?.current?.close?.();
 
       //socketInstance.disconnect();
     };
   }, []);
 
+  /*
   const ping = useCallback(() => {
     if (socket.current && isConnected) {
       socket.current.emit("ping", "ping");
@@ -94,6 +130,70 @@ const Test = () => {
       setMessages((prev) => [...prev, "Ping sent"]);
     }
   }, [isConnected]);
+  */
+
+  const waitMessage = useCallback(async () => {
+    let done = false;
+    let message: MessageType = undefined;
+    while (!done) {
+      const _responseQueue = [...responseQueue];
+      message = _responseQueue.shift();
+      setResponseQueue(_responseQueue);
+
+      if (message) {
+        done = true;
+      } else {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    }
+    return message;
+  }, [responseQueue]);
+
+  const handleTurn = useCallback(async () => {
+    const turns: MessageType[] = [];
+    let done = false;
+    while (!done) {
+      const message = await waitMessage();
+      turns.push(message);
+      if (message?.serverContent && message.serverContent.turnComplete) {
+        done = true;
+      }
+    }
+    return turns;
+  }, [waitMessage]);
+
+  const ping = useCallback(async () => {
+    session.current?.sendRealtimeInput({
+      audio: {
+        data: base64Text,
+        mimeType: "audio/pcm;rate=16000",
+      },
+    });
+
+    const turns = await handleTurn();
+
+    // Combine audio data strings and save as wave file
+    const combinedAudio = turns.reduce((acc: number[], turn) => {
+      if (turn?.data) {
+        const buffer = Buffer.from(turn.data, "base64");
+        const intArray = new Int16Array(
+          buffer.buffer,
+          buffer.byteOffset,
+          buffer.byteLength / Int16Array.BYTES_PER_ELEMENT
+        );
+        return acc.concat(Array.from(intArray));
+      }
+      return acc;
+    }, []);
+
+    const audioBuffer = new Int16Array(combinedAudio);
+
+    const wf = new WaveFile();
+    wf.fromScratch(1, 24000, "16", audioBuffer); // output is 24kHz
+    fs.writeFileSync("audio.wav", wf.toBuffer());
+
+    session.current?.close?.();
+  }, [handleTurn]);
 
   return (
     <div style={{ padding: "20px" }}>
@@ -115,35 +215,6 @@ const Test = () => {
       </div>
     </div>
   );
-
-  const responseQueue: MessageType[] = [];
-
-  async function waitMessage() {
-    let done = false;
-    let message: MessageType = undefined;
-    while (!done) {
-      message = responseQueue.shift();
-      if (message) {
-        done = true;
-      } else {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-    }
-    return message;
-  }
-
-  async function handleTurn() {
-    const turns: MessageType[] = [];
-    let done = false;
-    while (!done) {
-      const message = await waitMessage();
-      turns.push(message);
-      if (message?.serverContent && message.serverContent.turnComplete) {
-        done = true;
-      }
-    }
-    return turns;
-  }
 
   /*
   const session = await ai.live.connect({
@@ -182,36 +253,7 @@ const Test = () => {
   // const fileBuffer = fs.readFileSync("sample.pcm");
   // const base64Audio = Buffer.from(fileBuffer).toString('base64');
 
-  session.sendRealtimeInput({
-    audio: {
-      data: base64Audio,
-      mimeType: "audio/pcm;rate=16000",
-    },
-  });
 
-  const turns = await handleTurn();
-
-  // Combine audio data strings and save as wave file
-  const combinedAudio = turns.reduce((acc: number[], turn) => {
-    if (turn?.data) {
-      const buffer = Buffer.from(turn.data, "base64");
-      const intArray = new Int16Array(
-        buffer.buffer,
-        buffer.byteOffset,
-        buffer.byteLength / Int16Array.BYTES_PER_ELEMENT
-      );
-      return acc.concat(Array.from(intArray));
-    }
-    return acc;
-  }, []);
-
-  const audioBuffer = new Int16Array(combinedAudio);
-
-  const wf = new WaveFile();
-  wf.fromScratch(1, 24000, "16", audioBuffer); // output is 24kHz
-  fs.writeFileSync("audio.wav", wf.toBuffer());
-
-  session.close();
 
   return <div>Test</div>;
   */
