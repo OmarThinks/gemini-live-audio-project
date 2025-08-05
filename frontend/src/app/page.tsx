@@ -10,17 +10,12 @@ function Home() {
   const isConnected = !!socket?.current?.connected;
 
   const connectSocket = useCallback(() => {
-    if (!socket.current) {
+    if (!socket?.current?.connected) {
       const _socket = io("http://localhost:8000", {});
 
       _socket.on("connect", () => {
         console.log("Connected:", _socket.id);
         setMessages((prev) => [...prev, `Connected: ${_socket.id}`]);
-      });
-
-      _socket.on("events", (data) => {
-        console.log("Received:", data);
-        setMessages((prev) => [...prev, `Received: ${data}`]);
       });
 
       _socket.on("disconnect", () => {
@@ -48,6 +43,11 @@ function Home() {
         setMessages((prev) => [...prev, "Reconnection failed"]);
       });
 
+      _socket.on("pong", (response) => {
+        console.log("Pong received:", response);
+        setMessages((prev) => [...prev, `Message received: ${response}`]);
+      });
+
       socket.current = _socket;
     }
   }, []);
@@ -57,28 +57,6 @@ function Home() {
   }, []);
 
   useEffect(() => {
-    // Initialize socket connection
-    //const socketInstance = io("http://localhost:8000", {});
-    //setSocket(socketInstance);
-
-    // Connection event handlers
-    //socketInstance.on("connect", () => {
-    //  console.log("Connected:", socketInstance.id);
-    //  setIsConnected(true);
-    //  setMessages((prev) => [...prev, `Connected: ${socketInstance.id}`]);
-    //});
-
-    //socketInstance.on("events", (data) => {
-    //  console.log("Received:", data);
-    //  setMessages((prev) => [...prev, `Received: ${data}`]);
-    //});
-
-    //socketInstance.on("disconnect", () => {
-    //  console.log("Disconnected");
-    //  setIsConnected(false);
-    //  setMessages((prev) => [...prev, "Disconnected"]);
-    //});
-
     // Cleanup on unmount
     return () => {
       socket?.current?.disconnect?.();
@@ -87,13 +65,13 @@ function Home() {
     };
   }, []);
 
-  const sendMessage = () => {
+  const ping = useCallback(() => {
     if (socket.current && isConnected) {
-      socket.current.emit("events", "Hello from Next.js client!");
-      console.log("Message sent: Hello from Next.js client!");
-      setMessages((prev) => [...prev, "Sent: Hello from Next.js client!"]);
+      socket.current.emit("ping", "ping");
+      console.log("Ping sent");
+      setMessages((prev) => [...prev, "Ping sent"]);
     }
-  };
+  }, [isConnected]);
 
   return (
     <div style={{ padding: "20px" }}>
@@ -101,7 +79,7 @@ function Home() {
       <p>Status: {isConnected ? "Connected" : "Disconnected"}</p>
       {isConnected ? (
         <div className=" gap-3 flex flex-col">
-          <button onClick={sendMessage}>Send Test Message</button>
+          <button onClick={ping}>Ping</button>
           <button onClick={disconnectSocket}>Disconnect</button>
         </div>
       ) : (

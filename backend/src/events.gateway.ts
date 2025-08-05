@@ -21,10 +21,11 @@ export class EventsGateway
   @WebSocketServer() server: Server;
   private logger: Logger = new Logger('EventsGateway');
 
-  @SubscribeMessage('events')
-  handleEvent(@MessageBody() data: string): string {
-    console.log('Received event:', data);
-    return data;
+  @SubscribeMessage('ping')
+  handlePing(@MessageBody() data: string): string {
+    console.log('Received ping:', data);
+    this.server.emit('pong', 'pong');
+    return 'pong';
   }
 
   afterInit() {
