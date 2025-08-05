@@ -1,0 +1,14 @@
+- .env variable
+- Don't add to gitignore
+- add the api key
+- make backend read the api key
+
+- install dependencies
+- connect with a socket to the backend as in the example
+- Create a websocket endpoint
+- Connect to it with postman
+- test a request with it on postman
+- Connect to it with the react app
+- Read the server to server connection documentation
+- send the same request from the frontend to the backend server, and make the backend send just the same request sent to it
+- Make the backend send the request to google instead
