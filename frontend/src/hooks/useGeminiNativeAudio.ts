@@ -6,10 +6,38 @@ import {
   Session,
 } from "@google/genai/web";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { WaveFile } from "wavefile";
 
 const model = "gemini-2.5-flash-preview-native-audio-dialog";
 
 type MessageType = undefined | LiveServerMessage;
+
+async function playRawPCM(int16Array: Int16Array, sampleRate = 24000) {
+  const audioContext = new AudioContext({ sampleRate });
+
+  // Convert Int16Array to Float32Array (Web Audio API uses Float32)
+  const float32Array = new Float32Array(int16Array.length);
+  for (let i = 0; i < int16Array.length; i++) {
+    float32Array[i] = int16Array[i] / 32768; // normalize from [-32768, 32767] to [-1, 1]
+  }
+
+  // Create AudioBuffer
+  const audioBuffer = audioContext.createBuffer(
+    1, // 1 channel (mono)
+    float32Array.length,
+    sampleRate
+  );
+
+  audioBuffer.getChannelData(0).set(float32Array);
+
+  // Create buffer source and connect it
+  const source = audioContext.createBufferSource();
+  source.buffer = audioBuffer;
+  source.connect(audioContext.destination);
+
+  // Start playback
+  source.start();
+}
 
 const useGeminiNativeAudio = ({
   init_apiKey,
@@ -20,7 +48,7 @@ const useGeminiNativeAudio = ({
   init_onChangingServerStatus,
   init_onSocketError,
   init_onSocketClose,
-  onAiResponseReady,
+  init_onAiResponseReady,
 }: //onAiShouldStopSpeaking,
 {
   init_apiKey: string;
@@ -31,7 +59,7 @@ const useGeminiNativeAudio = ({
   init_onChangingServerStatus?: (status: ServerStatusType) => void;
   init_onSocketError?: (error: unknown) => void;
   init_onSocketClose?: (reason: unknown) => void;
-  init_onAiResponseReady?: (response: string) => void;
+  init_onAiResponseReady?: (response: number[]) => void;
   init_onAiShouldStopSpeaking?: () => void;
 }) => {
   const session = useRef<Session | null>(null);
@@ -52,8 +80,38 @@ const useGeminiNativeAudio = ({
     (status) => {
       _setServerStatus(status);
       init_onChangingServerStatus?.(status);
+      if (status === ServerStatusEnum.ResponseIsReady) {
+        const combinedAudio = responseQueue.reduce((acc: number[], turn) => {
+          if (turn?.data) {
+            const buffer = Buffer.from(turn.data, "base64");
+            const intArray = new Int16Array(
+              buffer.buffer,
+              buffer.byteOffset,
+              buffer.byteLength / Int16Array.BYTES_PER_ELEMENT
+            );
+            return acc.concat(Array.from(intArray));
+          }
+          return acc;
+        }, []);
+
+        const audioBuffer = new Int16Array(combinedAudio);
+
+        playRawPCM(audioBuffer, 24000); // 24kHz sample rate
+
+        console.log("Audio buffer created with length:", audioBuffer.length);
+
+        const wf = new WaveFile();
+
+        console.log("Creating wave file...");
+
+        wf.fromScratch(1, 24000, "16", audioBuffer);
+
+        init_onAiResponseReady?.(combinedAudio);
+
+        setResponseQueue([]);
+      }
     },
-    [init_onChangingServerStatus]
+    [init_onAiResponseReady, init_onChangingServerStatus, responseQueue]
   );
 
   const connectSocket = useCallback(async () => {
