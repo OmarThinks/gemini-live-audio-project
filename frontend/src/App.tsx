@@ -75,87 +75,11 @@ const App = () => {
     };
   }, []);
 
-  const waitMessage = useCallback(async () => {
-    let done = false;
-    let message: MessageType = undefined;
-    while (!done) {
-      const _responseQueue = [...responseQueue];
-      message = _responseQueue.shift();
-      setResponseQueue(_responseQueue);
+  const waitMessage = useCallback(async () => {}, [responseQueue]);
 
-      if (message) {
-        done = true;
-      } else {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-    }
-    return message;
-  }, [responseQueue]);
+  const handleTurn = useCallback(async () => {}, [responseQueue, waitMessage]);
 
-  const handleTurn = useCallback(async () => {
-    const turns: MessageType[] = [];
-    let done = false;
-    while (!done) {
-      console.log("Waiting for message...", JSON.stringify(turns));
-      console.log(JSON.stringify(responseQueue));
-      const message = await waitMessage();
-      turns.push(message);
-      if (message?.serverContent && message.serverContent.turnComplete) {
-        done = true;
-      }
-    }
-    return turns;
-  }, [responseQueue, waitMessage]);
-
-  const ping = useCallback(async () => {
-    console.log("Sending audio data to server...");
-    session.current?.sendRealtimeInput({
-      audio: {
-        data: base64Text,
-        mimeType: "audio/pcm;rate=16000",
-      },
-    });
-    console.log("Audio data sent");
-
-    const turns = await handleTurn();
-
-    console.log("Received turns:", turns);
-
-    // Combine audio data strings and save as wave file
-    const combinedAudio = turns.reduce((acc: number[], turn) => {
-      if (turn?.data) {
-        const buffer = Buffer.from(turn.data, "base64");
-        const intArray = new Int16Array(
-          buffer.buffer,
-          buffer.byteOffset,
-          buffer.byteLength / Int16Array.BYTES_PER_ELEMENT
-        );
-        return acc.concat(Array.from(intArray));
-      }
-      return acc;
-    }, []);
-
-    console.log("Combined audio length:", combinedAudio.length);
-
-    const audioBuffer = new Int16Array(combinedAudio);
-
-    console.log("Audio buffer length:", audioBuffer.length);
-
-    const wf = new WaveFile();
-
-    console.log("Creating wave file...");
-
-    wf.fromScratch(1, 24000, "16", audioBuffer); // output is 24kHz
-    console.log("Wave file created");
-
-    fs.writeFileSync("audio.wav", wf.toBuffer());
-
-    console.log("Audio saved to audio.wav");
-
-    session.current?.close?.();
-
-    console.log("Session closed");
-  }, [handleTurn]);
+  const ping = useCallback(async () => {}, [handleTurn]);
 
   return (
     <div style={{ padding: "20px" }}>
