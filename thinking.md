@@ -8,6 +8,9 @@
 - Ping Pong ✅
 - Read the server to server connection documentation ✅
 - Handle the connection at test2 the same way as home screen (With states) but to google instead ✅
+- Response queue,
+  - leaves one item after the response
+  -
 - Create a function called `onUsageReporting`, make it a parameter
 - `onReceivingMessage`
 - `onSocketError`

@@ -1,4 +1,4 @@
-import type { LiveServerMessage } from "@google/genai";
+import type { LiveServerMessage, Part } from "@google/genai";
 import { GoogleGenAI, Modality } from "@google/genai/web";
 import { Buffer } from "buffer";
 import { useState } from "react";
@@ -16,8 +16,10 @@ type MessageType = undefined | LiveServerMessage;
 //console.log("api key", process.env.GOOGLE_API_KEY);
 
 const App = () => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [usageQueue, setUsageQueue] = useState<TokensUsageType[]>([]);
   const [messages, setMessages] = useState<string[]>([]);
+  const [responseQueue, setResponseQueue] = useState<Part[]>([]);
 
   const {
     connectSocket,
@@ -27,22 +29,26 @@ const App = () => {
     session,
     sendRealtimeInput,
   } = useGeminiNativeAudio({
-    init_apiKey: import.meta.env.VITE_GOOGLE_API_KEY,
-    init_responseModalities: [Modality.AUDIO],
-    init_systemInstruction:
+    apiKey: import.meta.env.VITE_GOOGLE_API_KEY,
+    responseModalities: [Modality.AUDIO],
+    systemInstruction:
       "You are a helpful assistant and answer in a friendly tone.",
-    init_onUsageReporting: (usage) => {
-      console.log("Usage reported:", usage);
-      setUsageQueue((prev) => [...prev, usage]);
+    onUsageReporting: (usage) => {
+      setUsageQueue((prev) => {
+        const newUsageQueue = [...prev, usage];
+        console.log("newUsageQueue:", newUsageQueue);
+        return newUsageQueue;
+      });
     },
-    init_onReceivingMessage: (message) => {
+    onReceivingMessage: (message) => {
       //console.log("Message received:", message);
       setMessages((prev) => [...prev, `Message received: ${message.data}`]);
     },
-    init_onAiResponseReady(response) {
-      console.log("AI response ready:", response);
-      // Handle AI response ready logic here
+    onAiResponseCompleted() {
+      console.log("AI response completed");
+      // Handle AI response completed logic here
     },
+    setResponseQueue,
   });
 
   /*
@@ -250,6 +256,14 @@ const App = () => {
         }}
       >
         Log Session
+      </button>
+
+      <button
+        onClick={() => {
+          console.log(responseQueue);
+        }}
+      >
+        Log Response Queue
       </button>
 
       <JustDoIt />

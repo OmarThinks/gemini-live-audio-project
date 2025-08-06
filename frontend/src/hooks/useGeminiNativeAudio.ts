@@ -1,4 +1,4 @@
-import type { LiveServerMessage } from "@google/genai";
+import type { LiveServerMessage, Part } from "@google/genai/web";
 import {
   GoogleGenAI,
   MediaModality,
@@ -8,8 +8,6 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const model = "gemini-2.5-flash-preview-native-audio-dialog";
-
-type MessageType = undefined | LiveServerMessage;
 
 /*
 async function playRawPCM(int16Array: Int16Array, sampleRate = 24000) {
@@ -40,51 +38,55 @@ async function playRawPCM(int16Array: Int16Array, sampleRate = 24000) {
 }*/
 
 const useGeminiNativeAudio = ({
-  init_apiKey,
-  init_responseModalities = [Modality.AUDIO],
-  init_systemInstruction,
-  init_onUsageReporting,
-  init_onReceivingMessage,
-  init_onChangingServerStatus,
-  init_onSocketError,
-  init_onSocketClose,
-  init_onAiResponseReady,
+  apiKey,
+  responseModalities = [Modality.AUDIO],
+  systemInstruction,
+  onUsageReporting,
+  onReceivingMessage,
+  onChangingServerStatus,
+  onSocketError,
+  onSocketClose,
+  onAiResponseCompleted: onAiResponseReady,
+  setResponseQueue,
 }: //onAiShouldStopSpeaking,
 {
-  init_apiKey: string;
-  init_responseModalities?: Modality[];
-  init_systemInstruction?: string;
-  init_onUsageReporting?: (usage: TokensUsageType) => void;
-  init_onReceivingMessage?: (message: LiveServerMessage) => void;
-  init_onChangingServerStatus?: (status: ServerStatusType) => void;
-  init_onSocketError?: (error: unknown) => void;
-  init_onSocketClose?: (reason: unknown) => void;
-  init_onAiResponseReady?: (response: number[]) => void;
-  init_onAiShouldStopSpeaking?: () => void;
+  apiKey: string;
+  responseModalities?: Modality[];
+  systemInstruction?: string;
+  onUsageReporting?: (usage: TokensUsageType) => void;
+  onReceivingMessage?: (message: LiveServerMessage) => void;
+  onChangingServerStatus?: (status: ServerStatusType) => void;
+  onSocketError?: (error: unknown) => void;
+  onSocketClose?: (reason: unknown) => void;
+  onAiResponseCompleted?: () => void;
+  onAiShouldStopSpeaking?: () => void;
+  setResponseQueue: React.Dispatch<React.SetStateAction<Part[]>>;
 }) => {
   const session = useRef<Session | null>(null);
   const [messages, setMessages] = useState<string[]>([]);
   const isConnected = !!session?.current;
-  const [responseQueue, setResponseQueue] = useState<MessageType[]>([]);
   const [serverStatus, _setServerStatus] = useState<ServerStatusType>(
     ServerStatusEnum.Disconnected
   );
 
+  //console.log("responseQueue", JSON.stringify(responseQueue));
+
   const ai = useMemo(() => {
     return new GoogleGenAI({
-      apiKey: init_apiKey,
+      apiKey: apiKey,
     });
-  }, [init_apiKey]);
+  }, [apiKey]);
 
-  //console.log(init_onUsageReporting);
+  //console.log(onUsageReporting);
 
   const setServerStatus: (status: ServerStatusType) => void = useCallback(
     (status) => {
       //console.log("messages:", messages);
 
       _setServerStatus(status);
-      init_onChangingServerStatus?.(status);
+      onChangingServerStatus?.(status);
       if (status === ServerStatusEnum.ResponseIsReady) {
+        /*
         const combinedAudio = responseQueue.reduce((acc: number[], turn) => {
           if (turn?.data) {
             const buffer = Buffer.from(turn.data, "base64");
@@ -97,8 +99,9 @@ const useGeminiNativeAudio = ({
           }
           return acc;
         }, []);
+        */
 
-        init_onAiResponseReady?.(combinedAudio);
+        onAiResponseReady?.();
 
         //console.log("Combined audio length:", combinedAudio.length);
 
@@ -118,15 +121,10 @@ const useGeminiNativeAudio = ({
         wf.fromScratch(1, 24000, "16", audioBuffer);
         */
 
-        setResponseQueue([]);
+        //setResponseQueue([]);
       }
     },
-    [
-      init_onAiResponseReady,
-      init_onChangingServerStatus,
-      messages,
-      responseQueue,
-    ]
+    [onAiResponseReady, onChangingServerStatus]
   );
 
   const connectSocket = useCallback(async () => {
@@ -141,31 +139,44 @@ const useGeminiNativeAudio = ({
         onmessage: function (message) {
           recordTokensUsage({
             message,
-            onUsageReporting: init_onUsageReporting,
+            onUsageReporting: onUsageReporting,
           });
           const serverStatus = getServerStatusFromMessage(message);
-          init_onReceivingMessage?.(message);
+          onReceivingMessage?.(message);
           if (serverStatus) {
             setServerStatus?.(serverStatus);
           }
-          setResponseQueue((prev) => [...prev, message]);
+          if (message?.serverContent?.modelTurn?.parts) {
+            const parts: Part[] =
+              message?.serverContent?.modelTurn?.parts.filter(
+                (part) => part.inlineData !== undefined
+              ) ?? [];
+
+            if (parts.length > 0) {
+              //console.log("Parts:", parts);
+              //console.log("Part inline data:", parts[0].inlineData);
+              setResponseQueue((prev) => [...prev, ...parts]);
+            }
+
+            //const parts: Part[] = []
+          }
         },
         onerror: function (e) {
           console.debug("Error:", e.message);
           setMessages((prev) => [...prev, `Error: ${e.message}`]);
-          init_onSocketError?.(e);
+          onSocketError?.(e);
         },
         onclose: function (e) {
           console.debug("Close:", e.reason);
           setMessages((prev) => [...prev, `Disconnected: ${e.reason}`]);
           session.current = null;
           setServerStatus(ServerStatusEnum.Disconnected);
-          init_onSocketClose?.(e);
+          onSocketClose?.(e);
         },
       },
       config: {
-        responseModalities: init_responseModalities,
-        systemInstruction: init_systemInstruction,
+        responseModalities: responseModalities,
+        systemInstruction: systemInstruction,
       },
     });
 
@@ -174,13 +185,14 @@ const useGeminiNativeAudio = ({
     session.current = _session;
   }, [
     ai.live,
-    init_responseModalities,
-    init_systemInstruction,
+    responseModalities,
+    systemInstruction,
     setServerStatus,
-    init_onUsageReporting,
-    init_onReceivingMessage,
-    init_onSocketError,
-    init_onSocketClose,
+    onUsageReporting,
+    onReceivingMessage,
+    setResponseQueue,
+    onSocketError,
+    onSocketClose,
   ]);
 
   const disconnectSocket = useCallback(() => {
@@ -196,14 +208,18 @@ const useGeminiNativeAudio = ({
   //console.log("messages", messages);
   //console.log("responseQueue", responseQueue);
 
-  const sendRealtimeInput = useCallback(async (message: string) => {
-    session.current?.sendRealtimeInput?.({
-      audio: {
-        data: message,
-        mimeType: "audio/pcm;rate=16000",
-      },
-    });
-  }, []);
+  const sendRealtimeInput = useCallback(
+    async (message: string) => {
+      setResponseQueue([]);
+      session.current?.sendRealtimeInput?.({
+        audio: {
+          data: message,
+          mimeType: "audio/pcm;rate=16000",
+        },
+      });
+    },
+    [setResponseQueue]
+  );
 
   return {
     isConnected,
@@ -306,4 +322,4 @@ const getServerStatusFromMessage = (
 
 export { ServerStatusEnum, useGeminiNativeAudio };
 
-export type { ServerStatusType, TokensUsageType };
+export type { ServerStatusType, TokensUsageType, MessageQueueType };
