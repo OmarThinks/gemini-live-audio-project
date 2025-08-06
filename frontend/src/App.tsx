@@ -1,14 +1,13 @@
 import type { LiveServerMessage } from "@google/genai";
 import { GoogleGenAI, Modality } from "@google/genai/web";
 import { Buffer } from "buffer";
+import { useState } from "react";
 import { WaveFile } from "wavefile"; // npm install wavefile
 import { base64Text } from "./base64Text";
 import {
   useGeminiNativeAudio,
   type TokensUsageType,
 } from "./hooks/useGeminiNativeAudio";
-import { useState } from "react";
-import { CloseEvent } from "http";
 
 console.log("Google API Key:", import.meta.env.VITE_GOOGLE_API_KEY);
 
@@ -24,12 +23,12 @@ const App = () => {
     connectSocket,
     disconnectSocket,
     isConnected,
-    responseQueue,
     serverStatus,
     session,
+    sendRealtimeInput,
   } = useGeminiNativeAudio({
-    apiKey: import.meta.env.VITE_GOOGLE_API_KEY,
-    responseModalities: [Modality.AUDIO],
+    init_apiKey: import.meta.env.VITE_GOOGLE_API_KEY,
+    init_responseModalities: [Modality.AUDIO],
     init_systemInstruction:
       "You are a helpful assistant and answer in a friendly tone.",
     init_onUsageReporting: (usage) => {
@@ -39,6 +38,10 @@ const App = () => {
     init_onReceivingMessage: (message) => {
       console.log("Message received:", message);
       setMessages((prev) => [...prev, `Message received: ${message.data}`]);
+    },
+    init_onAiResponseReady(response) {
+      console.log("AI response ready:", response);
+      // Handle AI response ready logic here
     },
   });
 
@@ -212,7 +215,7 @@ const App = () => {
   }, []);
   */
 
-  console.log("responseQueue", JSON.stringify(responseQueue));
+  //console.log("responseQueue", JSON.stringify(responseQueue));
   console.log("messages", JSON.stringify(messages));
   console.log("usageQueue", JSON.stringify(usageQueue));
   console.log("serverStatus", serverStatus);
@@ -223,7 +226,13 @@ const App = () => {
       <p>Status: {isConnected ? "Connected" : "Disconnected"}</p>
       {isConnected ? (
         <div className=" gap-3 flex flex-col">
-          <button onClick={() => {}}>Ping</button>
+          <button
+            onClick={() => {
+              sendRealtimeInput(base64Text);
+            }}
+          >
+            Ping
+          </button>
           <button onClick={disconnectSocket}>Disconnect</button>
         </div>
       ) : (

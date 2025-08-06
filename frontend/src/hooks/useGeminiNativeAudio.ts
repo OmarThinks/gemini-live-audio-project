@@ -6,12 +6,12 @@ import {
   Session,
 } from "@google/genai/web";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { WaveFile } from "wavefile";
 
 const model = "gemini-2.5-flash-preview-native-audio-dialog";
 
 type MessageType = undefined | LiveServerMessage;
 
+/*
 async function playRawPCM(int16Array: Int16Array, sampleRate = 24000) {
   const audioContext = new AudioContext({ sampleRate });
 
@@ -37,7 +37,7 @@ async function playRawPCM(int16Array: Int16Array, sampleRate = 24000) {
 
   // Start playback
   source.start();
-}
+}*/
 
 const useGeminiNativeAudio = ({
   init_apiKey,
@@ -78,6 +78,8 @@ const useGeminiNativeAudio = ({
 
   const setServerStatus: (status: ServerStatusType) => void = useCallback(
     (status) => {
+      console.log("messages:", messages);
+
       _setServerStatus(status);
       init_onChangingServerStatus?.(status);
       if (status === ServerStatusEnum.ResponseIsReady) {
@@ -94,9 +96,16 @@ const useGeminiNativeAudio = ({
           return acc;
         }, []);
 
+        init_onAiResponseReady?.(combinedAudio);
+
+        console.log("Combined audio length:", combinedAudio.length);
+
+        /*
         const audioBuffer = new Int16Array(combinedAudio);
 
-        playRawPCM(audioBuffer, 24000); // 24kHz sample rate
+
+
+        //playRawPCM(audioBuffer, 24000); // 24kHz sample rate
 
         console.log("Audio buffer created with length:", audioBuffer.length);
 
@@ -105,8 +114,7 @@ const useGeminiNativeAudio = ({
         console.log("Creating wave file...");
 
         wf.fromScratch(1, 24000, "16", audioBuffer);
-
-        init_onAiResponseReady?.(combinedAudio);
+        */
 
         setResponseQueue([]);
       }
@@ -178,8 +186,17 @@ const useGeminiNativeAudio = ({
       session?.current?.close?.();
     };
   }, []);
-  console.log("messages", messages);
-  console.log("responseQueue", responseQueue);
+  //console.log("messages", messages);
+  //console.log("responseQueue", responseQueue);
+
+  const sendRealtimeInput = useCallback(async (message: string) => {
+    session.current?.sendRealtimeInput?.({
+      audio: {
+        data: message,
+        mimeType: "audio/pcm;rate=16000",
+      },
+    });
+  }, []);
 
   return {
     isConnected,
@@ -187,6 +204,7 @@ const useGeminiNativeAudio = ({
     connectSocket,
     disconnectSocket,
     session,
+    sendRealtimeInput,
   };
 };
 
@@ -253,6 +271,8 @@ const recordTokensUsage = ({
         textTokens: outputTextTokens,
       },
     };
+    console.log("Tokens usage:", usage);
+
     onUsageReporting?.(usage);
   }
 };
