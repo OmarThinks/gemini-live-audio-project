@@ -56,6 +56,8 @@ const Test = () => {
       config: config,
     });
 
+    console.log("Connected to Google GenAI:", _session);
+
     session.current = _session;
   }, [responseQueue]);
 
