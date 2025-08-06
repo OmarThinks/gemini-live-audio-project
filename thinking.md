@@ -7,7 +7,7 @@
 - Frontend: create buttons to manage the state of the connection and sending messages ✅
 - Ping Pong ✅
 - Read the server to server connection documentation ✅
-- Handle the connection at test2 the same way as home screen (With states) but to google instead
+- Handle the connection at test2 the same way as home screen (With states) but to google instead ✅
 - Record a voice with microphone
 - convert the voice to base64
 - send the voice to google, and wait for the response

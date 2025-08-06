@@ -1,11 +1,13 @@
+import type { LiveServerMessage } from "@google/genai";
 import { GoogleGenAI, Modality, Session } from "@google/genai/web";
+import { Buffer } from "buffer";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { WaveFile } from "wavefile"; // npm install wavefile
-import { base64Text } from "./base64Text";
-import { Buffer } from "buffer";
-import type { MediaModality, LiveServerMessage } from "@google/genai";
 import type { TokensUsageType } from "../types/TokensUsageType";
-import recordTokensUsage from "../utils/recordTokensUsage";
+import { recordTokensUsage } from "../utils/recordTokensUsage";
+import { base64Text } from "./base64Text";
+import { ServerStatusEnum } from "../types/ServerStatusEnum";
+import type { ServerStatusType } from "../types/ServerStatusEnum";
 
 console.log("Google API Key:", import.meta.env.VITE_GOOGLE_API_KEY);
 
@@ -32,6 +34,9 @@ const App = () => {
   const isConnected = !!session?.current;
   const [responseQueue, setResponseQueue] = useState<MessageType[]>([]);
   const [usageQueue, setUsageQueue] = useState<TokensUsageType[]>([]);
+  const [serverStatus, setServerStatus] = useState<ServerStatusType>(
+    ServerStatusEnum.Disconnected
+  );
 
   const connectSocket = useCallback(async () => {
     const _session = await ai.live.connect({
@@ -40,6 +45,7 @@ const App = () => {
         onopen: function () {
           console.debug("Opened");
           setMessages((prev) => [...prev, "Connected to Google GenAI"]);
+          setServerStatus(ServerStatusEnum.Listening);
         },
         onmessage: function (message) {
           recordTokensUsage({
@@ -57,6 +63,7 @@ const App = () => {
           console.debug("Close:", e.reason);
           setMessages((prev) => [...prev, `Disconnected: ${e.reason}`]);
           session.current = null;
+          setServerStatus(ServerStatusEnum.Disconnected);
         },
       },
       config: config,
@@ -69,6 +76,8 @@ const App = () => {
 
   console.log("responseQueue", JSON.stringify(responseQueue));
   console.log("messages", JSON.stringify(messages));
+  console.log("usageQueue", JSON.stringify(usageQueue));
+  console.log("serverStatus", serverStatus);
 
   const disconnectSocket = useCallback(() => {
     session?.current?.close?.();
