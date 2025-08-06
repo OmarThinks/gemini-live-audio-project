@@ -8,6 +8,13 @@
 - Ping Pong ✅
 - Read the server to server connection documentation ✅
 - Handle the connection at test2 the same way as home screen (With states) but to google instead ✅
+- Create a function called `onUsageReporting`, make it a parameter
+- `onReceivingMessage`
+- `onSocketError`
+- `onSocketClose`
+- `onAiResponseReady` => the response in base64
+- `onAiShouldStopSpeaking`
+-
 - Display voice of the response
 - Record a voice with microphone
 - convert the voice to base64

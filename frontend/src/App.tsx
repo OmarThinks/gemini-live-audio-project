@@ -3,7 +3,11 @@ import { GoogleGenAI, Modality } from "@google/genai/web";
 import { Buffer } from "buffer";
 import { WaveFile } from "wavefile"; // npm install wavefile
 import { base64Text } from "./base64Text";
-import { useGeminiNativeAudio } from "./hooks/useGeminiNativeAudio";
+import {
+  useGeminiNativeAudio,
+  type TokensUsageType,
+} from "./hooks/useGeminiNativeAudio";
+import { useState } from "react";
 
 console.log("Google API Key:", import.meta.env.VITE_GOOGLE_API_KEY);
 
@@ -12,20 +16,29 @@ type MessageType = undefined | LiveServerMessage;
 //console.log("api key", process.env.GOOGLE_API_KEY);
 
 const App = () => {
+  const [usageQueue, setUsageQueue] = useState<TokensUsageType[]>([]);
+  const [messages, setMessages] = useState<string[]>([]);
+
   const {
     connectSocket,
     disconnectSocket,
     isConnected,
     responseQueue,
-    usageQueue,
     serverStatus,
-    messages,
     session,
   } = useGeminiNativeAudio({
     apiKey: import.meta.env.VITE_GOOGLE_API_KEY,
     responseModalities: [Modality.AUDIO],
-    systemInstruction:
+    init_systemInstruction:
       "You are a helpful assistant and answer in a friendly tone.",
+    init_onUsageReporting: (usage) => {
+      console.log("Usage reported:", usage);
+      setUsageQueue((prev) => [...prev, usage]);
+    },
+    init_onReceivingMessage: (message) => {
+      console.log("Message received:", message);
+      setMessages((prev) => [...prev, `Message received: ${message.data}`]);
+    },
   });
 
   /*

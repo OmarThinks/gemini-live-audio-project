@@ -20,17 +20,34 @@ type MessageType = undefined | LiveServerMessage;
 const useGeminiNativeAudio = ({
   apiKey,
   responseModalities = [Modality.AUDIO],
-  systemInstruction,
-}: {
+  init_systemInstruction,
+  init_onUsageReporting,
+  init_onReceivingMessage,
+}: //onSocketError,
+//onSocketClose,
+//onAiResponseReady,
+//onAiShouldStopSpeaking,
+{
   apiKey: string;
   responseModalities?: Modality[];
-  systemInstruction?: string;
+  init_systemInstruction?: string;
+  init_onUsageReporting?: (usage: TokensUsageType) => void;
+  init_onReceivingMessage?: ({
+    message,
+    serverStatus,
+  }: {
+    message: LiveServerMessage;
+    serverStatus: ServerStatusType | undefined;
+  }) => void;
+  onSocketError?: (error: Error) => void;
+  onSocketClose?: (reason: string) => void;
+  onAiResponseReady?: (response: string) => void;
+  onAiShouldStopSpeaking?: () => void;
 }) => {
   const session = useRef<Session | null>(null);
   const [messages, setMessages] = useState<string[]>([]);
   const isConnected = !!session?.current;
   const [responseQueue, setResponseQueue] = useState<MessageType[]>([]);
-  const [usageQueue, setUsageQueue] = useState<TokensUsageType[]>([]);
   const [serverStatus, _setServerStatus] = useState<ServerStatusType>(
     ServerStatusEnum.Disconnected
   );
@@ -59,14 +76,11 @@ const useGeminiNativeAudio = ({
         onmessage: function (message) {
           recordTokensUsage({
             message,
-            setUsageQueue,
+            onUsageReporting: init_onUsageReporting,
           });
-          updateServerStatusFromMessage({
-            message,
-            setServerStatus,
-          });
+          const serverStatus = getServerStatusFromMessage(message);
+          init_onReceivingMessage?.({ message, serverStatus });
           setResponseQueue((prev) => [...prev, message]);
-          setMessages((prev) => [...prev, `Message received: ${message.data}`]);
         },
         onerror: function (e) {
           console.debug("Error:", e.message);
@@ -81,17 +95,24 @@ const useGeminiNativeAudio = ({
       },
       config: {
         responseModalities,
-        systemInstruction,
+        systemInstruction: init_systemInstruction,
       },
     });
 
     console.log("Connected to Google GenAI:", _session);
 
     session.current = _session;
-  }, [ai.live, responseModalities, systemInstruction]);
+  }, [
+    ai.live,
+    responseModalities,
+    init_systemInstruction,
+    init_onReceivingMessage,
+    init_onUsageReporting,
+  ]);
 
   const disconnectSocket = useCallback(() => {
     session?.current?.close?.();
+    session.current = null;
   }, []);
 
   useEffect(() => {
@@ -99,12 +120,11 @@ const useGeminiNativeAudio = ({
       session?.current?.close?.();
     };
   }, []);
+  console.log("messages", messages);
+  console.log("responseQueue", responseQueue);
 
   return {
-    messages,
     isConnected,
-    responseQueue,
-    usageQueue,
     serverStatus,
     connectSocket,
     disconnectSocket,
@@ -135,10 +155,10 @@ type TokensUsageType = {
 
 const recordTokensUsage = ({
   message,
-  setUsageQueue,
+  onUsageReporting,
 }: {
   message: LiveServerMessage;
-  setUsageQueue: React.Dispatch<React.SetStateAction<TokensUsageType[]>>;
+  onUsageReporting?: (usage: TokensUsageType) => void;
 }): void => {
   if (message.usageMetadata) {
     let inputTextTokens = 0;
@@ -175,27 +195,30 @@ const recordTokensUsage = ({
         textTokens: outputTextTokens,
       },
     };
-    setUsageQueue((prev) => [...prev, usage]);
+    onUsageReporting?.(usage);
   }
 };
 
-const updateServerStatusFromMessage = ({
-  message,
-  setServerStatus,
-}: {
-  message: LiveServerMessage;
-  setServerStatus: React.Dispatch<React.SetStateAction<ServerStatusType>>;
-}) => {
+/**
+ * This function tries to read the server status from the message.
+ * It returns the status if it can determine it, otherwise returns undefined.
+ */
+
+const getServerStatusFromMessage = (
+  message: LiveServerMessage
+): ServerStatusType | undefined => {
   if (message.setupComplete) {
-    setServerStatus(ServerStatusEnum.Listening);
+    return ServerStatusEnum.Listening;
   } else if (message.serverContent?.modelTurn) {
-    setServerStatus(ServerStatusEnum.Responding);
+    return ServerStatusEnum.Responding;
   } else if (message.serverContent?.turnComplete) {
-    setServerStatus(ServerStatusEnum.ResponseIsReady);
+    return ServerStatusEnum.ResponseIsReady;
+  } else {
+    return undefined;
   }
   // TODO: when to move on to listening again? so that it can just shut up?
 };
 
 export { ServerStatusEnum, useGeminiNativeAudio };
 
-export type { ServerStatusType };
+export type { ServerStatusType, TokensUsageType };
