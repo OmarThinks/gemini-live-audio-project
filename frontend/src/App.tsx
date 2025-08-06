@@ -8,6 +8,7 @@ import { recordTokensUsage } from "../utils/recordTokensUsage";
 import { base64Text } from "./base64Text";
 import { ServerStatusEnum } from "../types/ServerStatusEnum";
 import type { ServerStatusType } from "../types/ServerStatusEnum";
+import { updateServerStatusFromMessage } from "../utils/updateServerStatusFromMessage";
 
 console.log("Google API Key:", import.meta.env.VITE_GOOGLE_API_KEY);
 
@@ -34,9 +35,15 @@ const App = () => {
   const isConnected = !!session?.current;
   const [responseQueue, setResponseQueue] = useState<MessageType[]>([]);
   const [usageQueue, setUsageQueue] = useState<TokensUsageType[]>([]);
-  const [serverStatus, setServerStatus] = useState<ServerStatusType>(
+  const [serverStatus, _setServerStatus] = useState<ServerStatusType>(
     ServerStatusEnum.Disconnected
   );
+
+  const setServerStatus: React.Dispatch<
+    React.SetStateAction<ServerStatusType>
+  > = (status) => {
+    _setServerStatus(status);
+  };
 
   const connectSocket = useCallback(async () => {
     const _session = await ai.live.connect({
@@ -51,6 +58,10 @@ const App = () => {
           recordTokensUsage({
             message,
             setUsageQueue,
+          });
+          updateServerStatusFromMessage({
+            message,
+            setServerStatus,
           });
           setResponseQueue((prev) => [...prev, message]);
           setMessages((prev) => [...prev, `Message received: ${message.data}`]);
