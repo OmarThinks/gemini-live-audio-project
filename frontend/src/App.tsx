@@ -8,7 +8,7 @@ import * as fs from "node:fs";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { WaveFile } from "wavefile"; // npm install wavefile
 import { base64Text } from "./base64Text";
-import { Buffer } from "node:buffer";
+import { Buffer } from "buffer";
 
 console.log("Google API Key:", import.meta.env.VITE_GOOGLE_API_KEY);
 
@@ -287,10 +287,32 @@ const JustDoIt = () => {
     const audioBuffer = new Int16Array(combinedAudio);
 
     const wf = new WaveFile();
-    wf.fromScratch(1, 24000, "16", audioBuffer); // output is 24kHz
+    /*wf.fromScratch(1, 24000, "16", audioBuffer); // output is 24kHz
     fs.writeFileSync("audio.wav", wf.toBuffer());
 
-    session.close();
+    session.close();*/
+
+    console.log("Creating wave file...");
+
+    wf.fromScratch(1, 24000, "16", audioBuffer);
+    console.log("Wave file created");
+
+    // Use browser download instead of fs.writeFileSync
+    const blob = new Blob([wf.toBuffer()], { type: "audio/wav" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "audio.wav";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    console.log("Audio downloaded");
+
+    session.close?.();
+
+    console.log("Session closed");
   };
 
   return <button onClick={doIt}>Just Do It</button>;
