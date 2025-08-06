@@ -137,6 +137,7 @@ const useGeminiNativeAudio = ({
           setServerStatus(ServerStatusEnum.Listening);
         },
         onmessage: function (message) {
+          setMessages((prev) => [...prev, `Message received: ${message.data}`]);
           recordTokensUsage({
             message,
             onUsageReporting: onUsageReporting,
@@ -228,6 +229,7 @@ const useGeminiNativeAudio = ({
     disconnectSocket,
     session,
     sendRealtimeInput,
+    messages,
   };
 };
 
@@ -322,4 +324,4 @@ const getServerStatusFromMessage = (
 
 export { ServerStatusEnum, useGeminiNativeAudio };
 
-export type { ServerStatusType, TokensUsageType, MessageQueueType };
+export type { ServerStatusType, TokensUsageType };

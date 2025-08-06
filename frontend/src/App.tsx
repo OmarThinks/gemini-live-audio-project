@@ -18,7 +18,6 @@ type MessageType = undefined | LiveServerMessage;
 const App = () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [usageQueue, setUsageQueue] = useState<TokensUsageType[]>([]);
-  const [messages, setMessages] = useState<string[]>([]);
   const [responseQueue, setResponseQueue] = useState<Part[]>([]);
 
   const {
@@ -28,6 +27,7 @@ const App = () => {
     serverStatus,
     session,
     sendRealtimeInput,
+    messages,
   } = useGeminiNativeAudio({
     apiKey: import.meta.env.VITE_GOOGLE_API_KEY,
     responseModalities: [Modality.AUDIO],
@@ -42,7 +42,6 @@ const App = () => {
     },
     onReceivingMessage: (message) => {
       //console.log("Message received:", message);
-      setMessages((prev) => [...prev, `Message received: ${message.data}`]);
     },
     onAiResponseCompleted() {
       console.log("AI response completed");
@@ -260,10 +259,18 @@ const App = () => {
 
       <button
         onClick={() => {
-          console.log(responseQueue);
+          console.log(JSON.stringify(responseQueue));
         }}
       >
         Log Response Queue
+      </button>
+
+      <button
+        onClick={() => {
+          console.log(JSON.stringify(messages));
+        }}
+      >
+        Log Messages
       </button>
 
       <JustDoIt />
