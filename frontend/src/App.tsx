@@ -1,7 +1,7 @@
 import type { LiveServerMessage, Part } from "@google/genai";
 import { GoogleGenAI, Modality } from "@google/genai/web";
 import { Buffer } from "buffer";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WaveFile } from "wavefile"; // npm install wavefile
 import { base64Text } from "./base64Text";
 import {
@@ -19,6 +19,11 @@ const App = () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [usageQueue, setUsageQueue] = useState<TokensUsageType[]>([]);
   const [responseQueue, setResponseQueue] = useState<Part[]>([]);
+
+  const [recording, setRecording] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunks = useRef<Blob[]>([]);
 
   const {
     connectSocket,
@@ -41,16 +46,21 @@ const App = () => {
       });
     },
     onReceivingMessage: (message) => {
+      //onReceivingMessage(message);
       //console.log("Message received:", message);
+      //const base64PcmAudio =
+      //  message?.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
     },
     onAiResponseCompleted(base64Audio) {
+      //playPcmAudio(base64Audio, 24000); // sample rate from the mimeType
+      /*
       console.log("AI response completed");
       // Handle AI response completed logic here
 
       const wavBlob = pcmToWav(base64Audio, 24000); // sample rate from the mimeType
       const audioUrl = URL.createObjectURL(wavBlob);
       const audio = new Audio(audioUrl);
-      audio.play();
+      audio.play();*/
       //audio.st
     },
     setResponseQueue,
@@ -231,39 +241,44 @@ const App = () => {
   //console.log("usageQueue", JSON.stringify(usageQueue));
   //console.log("serverStatus", serverStatus);
 
-  const audioUrl = useMemo(() => {
-    const firstResponseQueueItem = responseQueue[0];
+  const startRecording = useCallback(async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mediaRecorder = new MediaRecorder(stream);
+    mediaRecorderRef.current = mediaRecorder;
+    audioChunks.current = [];
 
-    if (firstResponseQueueItem) {
-      console.log("First responseQueue item:", firstResponseQueueItem);
-      // You can also play the audio if needed
-      const audioData = firstResponseQueueItem.inlineData?.data as string;
-      console.log("Audio Data:", audioData);
-      if (audioData) {
-        const audioBlob = new Blob([Buffer.from(audioData, "base64")], {
-          type: "audio/wav",
-        });
-
-        console.log("Audio Blob created:", audioBlob);
-
-        const audioUrl = URL.createObjectURL(audioBlob);
-
-        return audioUrl;
-
-        /*
-        console.log("Audio URL created:", audioUrl);
-
-        const audio = new Audio(audioUrl);
-
-        console.log("Audio object created:", audio);
-        audio.play();
-        console.log("Audio playback started");*/
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        audioChunks.current.push(event.data);
       }
-      return undefined;
-    }
-  }, [responseQueue]);
+    };
 
-  console.log(messages);
+    mediaRecorder.onstop = () => {
+      const audioBlob = new Blob(audioChunks.current, { type: "audio/webm" });
+      const url = URL.createObjectURL(audioBlob);
+      setAudioUrl(url);
+
+      // Optional: base64 version
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = reader.result?.toString().split(",")[1];
+        console.log("Base64 Audio:", base64); // Do something with it
+      };
+      reader.readAsDataURL(audioBlob);
+    };
+
+    mediaRecorder.start();
+    setRecording(true);
+  }, []);
+
+  const stopRecording = useCallback(() => {
+    mediaRecorderRef.current?.stop();
+    setRecording(false);
+  }, []);
+
+  //console.log(messages);
+
+  console.log("responseQueue", JSON.stringify(responseQueue));
 
   return (
     <div style={{ padding: "20px" }}>
@@ -313,63 +328,27 @@ const App = () => {
         Log Messages
       </button>
 
+      <JustDoIt />
+
+      <AudioRecorder
+        recording={recording}
+        audioUrl={audioUrl}
+        startRecording={startRecording}
+        stopRecording={stopRecording}
+      />
+
       <button
         onClick={() => {
-          const firstResponseQueueItem = responseQueue[1];
-
-          if (firstResponseQueueItem) {
-            console.log("First responseQueue item:", firstResponseQueueItem);
-            // You can also play the audio if needed
-            const audioData = firstResponseQueueItem.inlineData?.data as string;
-
-            const wavBlob = pcmToWav(audioData, 24000); // sample rate from the mimeType
-            const audioUrl = URL.createObjectURL(wavBlob);
-            const audio = new Audio(audioUrl);
-            audio.play();
-
-            /*
-            console.log("Audio Data:", audioData);
-
-            const audioSrc = `data:audio/wav;base64,${audioData}`;
-
-            console.log("Audio Source:", audioSrc);
-
-            const audio = new Audio(audioSrc);
-
-            console.log("Audio object created:", audio);
-
-            audio.play();*/
-            /*
-
-            console.log("Audio Data:", audioData);
-            if (audioData) {
-              const audioBlob = new Blob([Buffer.from(audioData, "base64")], {
-                type: "audio/wav",
-              });
-
-              console.log("Audio Blob created:", audioBlob);
-
-              const audioUrl = URL.createObjectURL(audioBlob);
-
-              console.log("Audio URL created:", audioUrl);
-
-              const audio = new Audio(audioUrl);
-
-              console.log("Audio object created:", audio);
-              audio.play();
-              console.log("Audio playback started");
-            }*/
-          } else {
-            console.log("No items in responseQueue");
-          }
+          const audioBlob = new Blob(audioChunks.current, {
+            type: "audio/webm",
+          });
+          const url = URL.createObjectURL(audioBlob);
+          const audio = new Audio(url);
+          audio.play();
         }}
       >
-        Read out the first responseQueue item
+        Play Recorded Audio
       </button>
-
-      <audio src={audioUrl} controls />
-
-      <JustDoIt />
     </div>
   );
 };
@@ -407,6 +386,13 @@ function pcmToWav(pcmBase64: string, sampleRate = 24000, numChannels = 1) {
 
   return new Blob([view], { type: "audio/wav" });
 }
+
+const playPcmAudio = (pcmBase64: string, sampleRate = 24000) => {
+  const wavBlob = pcmToWav(pcmBase64, sampleRate); // sample rate from the mimeType
+  const audioUrl = URL.createObjectURL(wavBlob);
+  const audio = new Audio(audioUrl);
+  audio.play();
+};
 
 const JustDoIt = () => {
   const doIt = async () => {
@@ -537,5 +523,59 @@ const JustDoIt = () => {
 
   return <button onClick={doIt}>Just Do It</button>;
 };
+
+const AudioRecorder = ({
+  recording,
+  audioUrl,
+  startRecording,
+  stopRecording,
+}: {
+  recording: boolean;
+  audioUrl: string | null;
+  startRecording: () => Promise<void>;
+  stopRecording: () => void;
+}) => {
+  return (
+    <div>
+      <button onClick={recording ? stopRecording : startRecording}>
+        {recording ? "Stop Recording" : "Start Recording"}
+      </button>
+
+      {audioUrl && (
+        <div>
+          <h3>Playback:</h3>
+          <audio controls src={audioUrl} />
+        </div>
+      )}
+    </div>
+  );
+};
+
+function base64ToAudioBuffer(
+  base64: string,
+  audioContext: AudioContext
+): AudioBuffer {
+  const binary = atob(base64);
+  const buffer = new ArrayBuffer(binary.length);
+  const view = new DataView(buffer);
+  for (let i = 0; i < binary.length; i++) {
+    view.setUint8(i, binary.charCodeAt(i));
+  }
+
+  const pcm = new Int16Array(buffer);
+  const float32 = new Float32Array(pcm.length);
+  for (let i = 0; i < pcm.length; i++) {
+    float32[i] = pcm[i] / 32768; // Normalize
+  }
+
+  const audioBuffer = audioContext.createBuffer(
+    1, // mono
+    float32.length,
+    24000 // sampleRate
+  );
+
+  audioBuffer.getChannelData(0).set(float32);
+  return audioBuffer;
+}
 
 export default App;
