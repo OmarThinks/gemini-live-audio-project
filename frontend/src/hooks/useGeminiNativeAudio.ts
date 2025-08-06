@@ -76,9 +76,11 @@ const useGeminiNativeAudio = ({
     });
   }, [init_apiKey]);
 
+  //console.log(init_onUsageReporting);
+
   const setServerStatus: (status: ServerStatusType) => void = useCallback(
     (status) => {
-      console.log("messages:", messages);
+      //console.log("messages:", messages);
 
       _setServerStatus(status);
       init_onChangingServerStatus?.(status);
@@ -98,7 +100,7 @@ const useGeminiNativeAudio = ({
 
         init_onAiResponseReady?.(combinedAudio);
 
-        console.log("Combined audio length:", combinedAudio.length);
+        //console.log("Combined audio length:", combinedAudio.length);
 
         /*
         const audioBuffer = new Int16Array(combinedAudio);
@@ -119,7 +121,12 @@ const useGeminiNativeAudio = ({
         setResponseQueue([]);
       }
     },
-    [init_onAiResponseReady, init_onChangingServerStatus, responseQueue]
+    [
+      init_onAiResponseReady,
+      init_onChangingServerStatus,
+      messages,
+      responseQueue,
+    ]
   );
 
   const connectSocket = useCallback(async () => {

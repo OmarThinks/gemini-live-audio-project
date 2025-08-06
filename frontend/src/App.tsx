@@ -9,7 +9,7 @@ import {
   type TokensUsageType,
 } from "./hooks/useGeminiNativeAudio";
 
-console.log("Google API Key:", import.meta.env.VITE_GOOGLE_API_KEY);
+//console.log("Google API Key:", import.meta.env.VITE_GOOGLE_API_KEY);
 
 type MessageType = undefined | LiveServerMessage;
 
@@ -36,7 +36,7 @@ const App = () => {
       setUsageQueue((prev) => [...prev, usage]);
     },
     init_onReceivingMessage: (message) => {
-      console.log("Message received:", message);
+      //console.log("Message received:", message);
       setMessages((prev) => [...prev, `Message received: ${message.data}`]);
     },
     init_onAiResponseReady(response) {
@@ -216,9 +216,9 @@ const App = () => {
   */
 
   //console.log("responseQueue", JSON.stringify(responseQueue));
-  console.log("messages", JSON.stringify(messages));
-  console.log("usageQueue", JSON.stringify(usageQueue));
-  console.log("serverStatus", serverStatus);
+  //console.log("messages", JSON.stringify(messages));
+  //console.log("usageQueue", JSON.stringify(usageQueue));
+  //console.log("serverStatus", serverStatus);
 
   return (
     <div style={{ padding: "20px" }}>
