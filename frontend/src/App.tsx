@@ -8,6 +8,7 @@ import {
   type TokensUsageType,
 } from "./hooks/useGeminiNativeAudio";
 import { useState } from "react";
+import { CloseEvent } from "http";
 
 console.log("Google API Key:", import.meta.env.VITE_GOOGLE_API_KEY);
 

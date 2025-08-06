@@ -1,48 +1,38 @@
 import type { LiveServerMessage } from "@google/genai";
 import {
   GoogleGenAI,
-  Session,
   MediaModality,
   Modality,
+  Session,
 } from "@google/genai/web";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const model = "gemini-2.5-flash-preview-native-audio-dialog";
 
 type MessageType = undefined | LiveServerMessage;
 
 const useGeminiNativeAudio = ({
-  apiKey,
-  responseModalities = [Modality.AUDIO],
+  init_apiKey,
+  init_responseModalities = [Modality.AUDIO],
   init_systemInstruction,
   init_onUsageReporting,
   init_onReceivingMessage,
-}: //onSocketError,
-//onSocketClose,
-//onAiResponseReady,
-//onAiShouldStopSpeaking,
+  init_onChangingServerStatus,
+  init_onSocketError,
+  init_onSocketClose,
+  onAiResponseReady,
+}: //onAiShouldStopSpeaking,
 {
-  apiKey: string;
-  responseModalities?: Modality[];
+  init_apiKey: string;
+  init_responseModalities?: Modality[];
   init_systemInstruction?: string;
   init_onUsageReporting?: (usage: TokensUsageType) => void;
-  init_onReceivingMessage?: ({
-    message,
-    serverStatus,
-  }: {
-    message: LiveServerMessage;
-    serverStatus: ServerStatusType | undefined;
-  }) => void;
-  onSocketError?: (error: Error) => void;
-  onSocketClose?: (reason: string) => void;
-  onAiResponseReady?: (response: string) => void;
-  onAiShouldStopSpeaking?: () => void;
+  init_onReceivingMessage?: (message: LiveServerMessage) => void;
+  init_onChangingServerStatus?: (status: ServerStatusType) => void;
+  init_onSocketError?: (error: unknown) => void;
+  init_onSocketClose?: (reason: unknown) => void;
+  init_onAiResponseReady?: (response: string) => void;
+  init_onAiShouldStopSpeaking?: () => void;
 }) => {
   const session = useRef<Session | null>(null);
   const [messages, setMessages] = useState<string[]>([]);
@@ -54,15 +44,17 @@ const useGeminiNativeAudio = ({
 
   const ai = useMemo(() => {
     return new GoogleGenAI({
-      apiKey: apiKey,
+      apiKey: init_apiKey,
     });
-  }, [apiKey]);
+  }, [init_apiKey]);
 
-  const setServerStatus: React.Dispatch<
-    React.SetStateAction<ServerStatusType>
-  > = (status) => {
-    _setServerStatus(status);
-  };
+  const setServerStatus: (status: ServerStatusType) => void = useCallback(
+    (status) => {
+      _setServerStatus(status);
+      init_onChangingServerStatus?.(status);
+    },
+    [init_onChangingServerStatus]
+  );
 
   const connectSocket = useCallback(async () => {
     const _session = await ai.live.connect({
@@ -79,22 +71,27 @@ const useGeminiNativeAudio = ({
             onUsageReporting: init_onUsageReporting,
           });
           const serverStatus = getServerStatusFromMessage(message);
-          init_onReceivingMessage?.({ message, serverStatus });
+          init_onReceivingMessage?.(message);
+          if (serverStatus) {
+            setServerStatus?.(serverStatus);
+          }
           setResponseQueue((prev) => [...prev, message]);
         },
         onerror: function (e) {
           console.debug("Error:", e.message);
           setMessages((prev) => [...prev, `Error: ${e.message}`]);
+          init_onSocketError?.(e);
         },
         onclose: function (e) {
           console.debug("Close:", e.reason);
           setMessages((prev) => [...prev, `Disconnected: ${e.reason}`]);
           session.current = null;
           setServerStatus(ServerStatusEnum.Disconnected);
+          init_onSocketClose?.(e);
         },
       },
       config: {
-        responseModalities,
+        responseModalities: init_responseModalities,
         systemInstruction: init_systemInstruction,
       },
     });
@@ -104,10 +101,13 @@ const useGeminiNativeAudio = ({
     session.current = _session;
   }, [
     ai.live,
-    responseModalities,
+    init_responseModalities,
     init_systemInstruction,
-    init_onReceivingMessage,
+    setServerStatus,
     init_onUsageReporting,
+    init_onReceivingMessage,
+    init_onSocketError,
+    init_onSocketClose,
   ]);
 
   const disconnectSocket = useCallback(() => {
