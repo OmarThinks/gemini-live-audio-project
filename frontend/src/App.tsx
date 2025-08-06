@@ -1,13 +1,11 @@
-import {
-  GoogleGenAI,
-  LiveServerMessage,
-  Modality,
-  Session,
-} from "@google/genai/web";
+import { GoogleGenAI, Modality, Session } from "@google/genai/web";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { WaveFile } from "wavefile"; // npm install wavefile
 import { base64Text } from "./base64Text";
 import { Buffer } from "buffer";
+import type { MediaModality, LiveServerMessage } from "@google/genai";
+import type { TokensUsageType } from "../types/TokensUsageType";
+import recordTokensUsage from "../utils/recordTokensUsage";
 
 console.log("Google API Key:", import.meta.env.VITE_GOOGLE_API_KEY);
 
@@ -33,6 +31,7 @@ const App = () => {
   const session = useRef<Session | null>(null);
   const isConnected = !!session?.current;
   const [responseQueue, setResponseQueue] = useState<MessageType[]>([]);
+  const [usageQueue, setUsageQueue] = useState<TokensUsageType[]>([]);
 
   const connectSocket = useCallback(async () => {
     const _session = await ai.live.connect({
@@ -43,9 +42,11 @@ const App = () => {
           setMessages((prev) => [...prev, "Connected to Google GenAI"]);
         },
         onmessage: function (message) {
-          //responseQueue.push(message);
-          const newResponseQueue = [...responseQueue, message];
-          setResponseQueue(newResponseQueue);
+          recordTokensUsage({
+            message,
+            setUsageQueue,
+          });
+          setResponseQueue((prev) => [...prev, message]);
           setMessages((prev) => [...prev, `Message received: ${message.data}`]);
         },
         onerror: function (e) {
@@ -64,7 +65,10 @@ const App = () => {
     console.log("Connected to Google GenAI:", _session);
 
     session.current = _session;
-  }, [responseQueue]);
+  }, []);
+
+  console.log("responseQueue", JSON.stringify(responseQueue));
+  console.log("messages", JSON.stringify(messages));
 
   const disconnectSocket = useCallback(() => {
     session?.current?.close?.();
@@ -76,6 +80,7 @@ const App = () => {
     };
   }, []);
 
+  /*
   const waitMessage = useCallback(async () => {
     let done = false;
     let message: MessageType = undefined;
@@ -104,7 +109,7 @@ const App = () => {
       }
     }
     return turns;
-  }, [waitMessage]);
+  }, [waitMessage]);*/
 
   const ping = useCallback(async () => {
     const base64Audio = base64Text;
