@@ -1,34 +1,34 @@
 import type { LiveServerMessage } from "@google/genai";
-import { GoogleGenAI, Modality, Session } from "@google/genai/web";
+import { GoogleGenAI, Modality } from "@google/genai/web";
 import { Buffer } from "buffer";
-import { useCallback, useEffect, useRef, useState } from "react";
 import { WaveFile } from "wavefile"; // npm install wavefile
-import type { TokensUsageType } from "../types/TokensUsageType";
-import { recordTokensUsage } from "../utils/recordTokensUsage";
 import { base64Text } from "./base64Text";
-import { ServerStatusEnum } from "../types/ServerStatusEnum";
-import type { ServerStatusType } from "../types/ServerStatusEnum";
-import { updateServerStatusFromMessage } from "../utils/updateServerStatusFromMessage";
+import { useGeminiNativeAudio } from "./hooks/useGeminiNativeAudio";
 
 console.log("Google API Key:", import.meta.env.VITE_GOOGLE_API_KEY);
-
-const ai = new GoogleGenAI({
-  apiKey: import.meta.env.VITE_GOOGLE_API_KEY,
-});
-
-const model = "gemini-2.5-flash-preview-native-audio-dialog";
-
-const config = {
-  responseModalities: [Modality.AUDIO],
-  systemInstruction:
-    "You are a helpful assistant and answer in a friendly tone.",
-};
 
 type MessageType = undefined | LiveServerMessage;
 
 //console.log("api key", process.env.GOOGLE_API_KEY);
 
 const App = () => {
+  const {
+    connectSocket,
+    disconnectSocket,
+    isConnected,
+    responseQueue,
+    usageQueue,
+    serverStatus,
+    messages,
+    session,
+  } = useGeminiNativeAudio({
+    apiKey: import.meta.env.VITE_GOOGLE_API_KEY,
+    responseModalities: [Modality.AUDIO],
+    systemInstruction:
+      "You are a helpful assistant and answer in a friendly tone.",
+  });
+
+  /*
   const [messages, setMessages] = useState<string[]>([]);
 
   const session = useRef<Session | null>(null);
@@ -99,7 +99,9 @@ const App = () => {
       session?.current?.close?.();
     };
   }, []);
+  */
 
+  /*
   const waitMessage = useCallback(async () => {
     let done = false;
     let message: MessageType = undefined;
@@ -162,6 +164,7 @@ const App = () => {
       }
       return acc;
     }, []);
+    
 
     console.log("Combined audio length:", combinedAudio);
 
@@ -193,6 +196,12 @@ const App = () => {
 
     console.log("Session closed");
   }, []);
+  */
+
+  console.log("responseQueue", JSON.stringify(responseQueue));
+  console.log("messages", JSON.stringify(messages));
+  console.log("usageQueue", JSON.stringify(usageQueue));
+  console.log("serverStatus", serverStatus);
 
   return (
     <div style={{ padding: "20px" }}>
@@ -200,7 +209,7 @@ const App = () => {
       <p>Status: {isConnected ? "Connected" : "Disconnected"}</p>
       {isConnected ? (
         <div className=" gap-3 flex flex-col">
-          <button onClick={ping}>Ping</button>
+          <button onClick={() => {}}>Ping</button>
           <button onClick={disconnectSocket}>Disconnect</button>
         </div>
       ) : (
