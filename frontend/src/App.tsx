@@ -1,7 +1,7 @@
 import type { LiveServerMessage, Part } from "@google/genai";
 import { GoogleGenAI, Modality } from "@google/genai/web";
 import { Buffer } from "buffer";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { WaveFile } from "wavefile"; // npm install wavefile
 import { base64Text } from "./base64Text";
 import {
@@ -225,6 +225,38 @@ const App = () => {
   //console.log("usageQueue", JSON.stringify(usageQueue));
   //console.log("serverStatus", serverStatus);
 
+  const audioUrl = useMemo(() => {
+    const firstResponseQueueItem = responseQueue[0];
+
+    if (firstResponseQueueItem) {
+      console.log("First responseQueue item:", firstResponseQueueItem);
+      // You can also play the audio if needed
+      const audioData = firstResponseQueueItem.inlineData?.data as string;
+      console.log("Audio Data:", audioData);
+      if (audioData) {
+        const audioBlob = new Blob([Buffer.from(audioData, "base64")], {
+          type: "audio/wav",
+        });
+
+        console.log("Audio Blob created:", audioBlob);
+
+        const audioUrl = URL.createObjectURL(audioBlob);
+
+        return audioUrl;
+
+        /*
+        console.log("Audio URL created:", audioUrl);
+
+        const audio = new Audio(audioUrl);
+
+        console.log("Audio object created:", audio);
+        audio.play();
+        console.log("Audio playback started");*/
+      }
+      return undefined;
+    }
+  }, [responseQueue]);
+
   return (
     <div style={{ padding: "20px" }}>
       <h1>WebSocket Test</h1>
@@ -273,10 +305,100 @@ const App = () => {
         Log Messages
       </button>
 
+      <button
+        onClick={() => {
+          const firstResponseQueueItem = responseQueue[1];
+
+          if (firstResponseQueueItem) {
+            console.log("First responseQueue item:", firstResponseQueueItem);
+            // You can also play the audio if needed
+            const audioData = firstResponseQueueItem.inlineData?.data as string;
+
+            const wavBlob = pcmToWav(audioData, 24000); // sample rate from the mimeType
+            const audioUrl = URL.createObjectURL(wavBlob);
+            const audio = new Audio(audioUrl);
+            audio.play();
+
+            /*
+            console.log("Audio Data:", audioData);
+
+            const audioSrc = `data:audio/wav;base64,${audioData}`;
+
+            console.log("Audio Source:", audioSrc);
+
+            const audio = new Audio(audioSrc);
+
+            console.log("Audio object created:", audio);
+
+            audio.play();*/
+            /*
+
+            console.log("Audio Data:", audioData);
+            if (audioData) {
+              const audioBlob = new Blob([Buffer.from(audioData, "base64")], {
+                type: "audio/wav",
+              });
+
+              console.log("Audio Blob created:", audioBlob);
+
+              const audioUrl = URL.createObjectURL(audioBlob);
+
+              console.log("Audio URL created:", audioUrl);
+
+              const audio = new Audio(audioUrl);
+
+              console.log("Audio object created:", audio);
+              audio.play();
+              console.log("Audio playback started");
+            }*/
+          } else {
+            console.log("No items in responseQueue");
+          }
+        }}
+      >
+        Read out the first responseQueue item
+      </button>
+
+      <audio src={audioUrl} controls />
+
       <JustDoIt />
     </div>
   );
 };
+
+function pcmToWav(pcmBase64: string, sampleRate = 24000, numChannels = 1) {
+  const pcmData = atob(pcmBase64); // decode base64 to binary
+  const buffer = new ArrayBuffer(44 + pcmData.length);
+  const view = new DataView(buffer);
+
+  // WAV header
+  const writeString = (offset: number, str: string) => {
+    for (let i = 0; i < str.length; i++) {
+      view.setUint8(offset + i, str.charCodeAt(i));
+    }
+  };
+
+  writeString(0, "RIFF");
+  view.setUint32(4, 36 + pcmData.length, true); // file length
+  writeString(8, "WAVE");
+  writeString(12, "fmt ");
+  view.setUint32(16, 16, true); // PCM chunk size
+  view.setUint16(20, 1, true); // Audio format (1 = PCM)
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * numChannels * 2, true); // byte rate
+  view.setUint16(32, numChannels * 2, true); // block align
+  view.setUint16(34, 16, true); // bits per sample
+  writeString(36, "data");
+  view.setUint32(40, pcmData.length, true);
+
+  // PCM samples
+  for (let i = 0; i < pcmData.length; i++) {
+    view.setUint8(44 + i, pcmData.charCodeAt(i));
+  }
+
+  return new Blob([view], { type: "audio/wav" });
+}
 
 const JustDoIt = () => {
   const doIt = async () => {
