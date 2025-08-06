@@ -1,6 +1,7 @@
 const ServerStatusEnum = {
   Listening: "Listening",
   Responding: "Responding",
+  ResponseIsReady: "ResponseIsReady",
   Disconnected: "Disconnected",
 };
 

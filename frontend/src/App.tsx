@@ -100,7 +100,6 @@ const App = () => {
     };
   }, []);
 
-  /*
   const waitMessage = useCallback(async () => {
     let done = false;
     let message: MessageType = undefined;
@@ -129,7 +128,7 @@ const App = () => {
       }
     }
     return turns;
-  }, [waitMessage]);*/
+  }, [waitMessage]);
 
   const ping = useCallback(async () => {
     const base64Audio = base64Text;
@@ -147,8 +146,6 @@ const App = () => {
     });
     console.log("Audio chunk sent");
 
-    /*
-    
     const turns = await handleTurn();
     console.log("Turns received:", turns);
 
@@ -174,7 +171,6 @@ const App = () => {
 
     const wf = new WaveFile();
 
-
     console.log("Creating wave file...");
 
     wf.fromScratch(1, 24000, "16", audioBuffer);
@@ -195,9 +191,7 @@ const App = () => {
 
     session.current?.close?.();
 
-
     console.log("Session closed");
-    */
   }, []);
 
   return (

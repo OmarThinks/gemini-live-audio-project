@@ -16,10 +16,10 @@ const updateServerStatusFromMessage = ({
     setServerStatus(ServerStatusEnum.Listening);
   } else if (message.serverContent?.modelTurn) {
     setServerStatus(ServerStatusEnum.Responding);
-  } /*else if (message.serverContent?.turnComplete) {
-    setServerStatus(ServerStatusEnum.Listening);
-  }*/
-  // TODO: when to move on to listening again?
+  } else if (message.serverContent?.turnComplete) {
+    setServerStatus(ServerStatusEnum.ResponseIsReady);
+  }
+  // TODO: when to move on to listening again? so that it can just shut up?
 };
 
 export { updateServerStatusFromMessage };

@@ -8,10 +8,12 @@
 - Ping Pong ✅
 - Read the server to server connection documentation ✅
 - Handle the connection at test2 the same way as home screen (With states) but to google instead ✅
+- Display voice of the response
 - Record a voice with microphone
 - convert the voice to base64
 - send the voice to google, and wait for the response
 - make it live some how
+- Hook
 
 - From frontend, send the same voice base64 request to the websocket endpoint
 - Make the backend receive this base64 request
