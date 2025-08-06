@@ -6,6 +6,7 @@ import {
   Session,
 } from "@google/genai/web";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Buffer } from "buffer";
 
 const model = "gemini-2.5-flash-preview-native-audio-dialog";
 
@@ -46,7 +47,7 @@ const useGeminiNativeAudio = ({
   onChangingServerStatus,
   onSocketError,
   onSocketClose,
-  onAiResponseCompleted: onAiResponseReady,
+  onAiResponseCompleted,
   setResponseQueue,
 }: //onAiShouldStopSpeaking,
 {
@@ -58,10 +59,12 @@ const useGeminiNativeAudio = ({
   onChangingServerStatus?: (status: ServerStatusType) => void;
   onSocketError?: (error: unknown) => void;
   onSocketClose?: (reason: unknown) => void;
-  onAiResponseCompleted?: () => void;
+  onAiResponseCompleted?: (base64Audio: string) => void;
   onAiShouldStopSpeaking?: () => void;
   setResponseQueue: React.Dispatch<React.SetStateAction<Part[]>>;
 }) => {
+  const innerResponseQueue = useRef<Part[]>([]);
+
   const session = useRef<Session | null>(null);
   const [messages, setMessages] = useState<string[]>([]);
   const isConnected = !!session?.current;
@@ -70,6 +73,11 @@ const useGeminiNativeAudio = ({
   );
 
   //console.log("responseQueue", JSON.stringify(responseQueue));
+
+  useEffect(() => {
+    onChangingServerStatus?.(serverStatus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverStatus]);
 
   const ai = useMemo(() => {
     return new GoogleGenAI({
@@ -84,32 +92,63 @@ const useGeminiNativeAudio = ({
       //console.log("messages:", messages);
 
       _setServerStatus(status);
-      onChangingServerStatus?.(status);
       if (status === ServerStatusEnum.ResponseIsReady) {
-        /*
-        const combinedAudio = responseQueue.reduce((acc: number[], turn) => {
-          if (turn?.data) {
-            const buffer = Buffer.from(turn.data, "base64");
-            const intArray = new Int16Array(
-              buffer.buffer,
-              buffer.byteOffset,
-              buffer.byteLength / Int16Array.BYTES_PER_ELEMENT
-            );
-            return acc.concat(Array.from(intArray));
+        const pcmChunks: Uint8Array[] = innerResponseQueue.current.map(
+          (part) => {
+            if (part?.inlineData?.data) {
+              const buf = Buffer.from(part.inlineData?.data, "base64"); // decode base64 to raw bytes
+              const toReturn = new Uint8Array(
+                buf.buffer,
+                buf.byteOffset,
+                buf.byteLength
+              );
+              return toReturn;
+            } else {
+              return new Uint8Array();
+            }
           }
-          return acc;
-        }, []);
+        );
+
+        // Calculate total length
+        const totalLength = pcmChunks.reduce(
+          (acc, chunk) => acc + chunk.length,
+          0
+        );
+
+        // Create one big Uint8Array
+        const combined = new Uint8Array(totalLength);
+        let offset = 0;
+        for (const chunk of pcmChunks) {
+          combined.set(chunk, offset);
+          offset += chunk.length;
+        }
+
+        // Convert back to base64
+        const combinedBase64 = Buffer.from(combined.buffer).toString("base64");
+
+        onAiResponseCompleted?.(combinedBase64);
+
+        /*const combinedAudio = innerResponseQueue.current?.reduce?.(
+          (acc: number[], part) => {
+            if (part?.inlineData?.data) {
+              const buffer = Buffer.from(part.inlineData.data, "base64");
+              const intArray = new Int16Array(
+                buffer.buffer,
+                buffer.byteOffset,
+                buffer.byteLength / Int16Array.BYTES_PER_ELEMENT
+              );
+              return acc.concat(Array.from(intArray));
+            }
+            return acc;
+          },
+          []
+        );
+
+        
         */
-
-        onAiResponseReady?.();
-
         //console.log("Combined audio length:", combinedAudio.length);
-
+        //const audioBuffer = new Int16Array(combinedAudio);
         /*
-        const audioBuffer = new Int16Array(combinedAudio);
-
-
-
         //playRawPCM(audioBuffer, 24000); // 24kHz sample rate
 
         console.log("Audio buffer created with length:", audioBuffer.length);
@@ -120,11 +159,10 @@ const useGeminiNativeAudio = ({
 
         wf.fromScratch(1, 24000, "16", audioBuffer);
         */
-
         //setResponseQueue([]);
       }
     },
-    [onAiResponseReady, onChangingServerStatus]
+    [onAiResponseCompleted]
   );
 
   const connectSocket = useCallback(async () => {
@@ -157,6 +195,10 @@ const useGeminiNativeAudio = ({
               //console.log("Parts:", parts);
               //console.log("Part inline data:", parts[0].inlineData);
               setResponseQueue((prev) => [...prev, ...parts]);
+              innerResponseQueue.current = [
+                ...innerResponseQueue.current,
+                ...parts,
+              ];
             }
 
             //const parts: Part[] = []
@@ -212,6 +254,7 @@ const useGeminiNativeAudio = ({
   const sendRealtimeInput = useCallback(
     async (message: string) => {
       setResponseQueue([]);
+      innerResponseQueue.current = [];
       session.current?.sendRealtimeInput?.({
         audio: {
           data: message,

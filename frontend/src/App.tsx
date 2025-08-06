@@ -43,9 +43,15 @@ const App = () => {
     onReceivingMessage: (message) => {
       //console.log("Message received:", message);
     },
-    onAiResponseCompleted() {
+    onAiResponseCompleted(base64Audio) {
       console.log("AI response completed");
       // Handle AI response completed logic here
+
+      const wavBlob = pcmToWav(base64Audio, 24000); // sample rate from the mimeType
+      const audioUrl = URL.createObjectURL(wavBlob);
+      const audio = new Audio(audioUrl);
+      audio.play();
+      //audio.st
     },
     setResponseQueue,
   });
@@ -256,6 +262,8 @@ const App = () => {
       return undefined;
     }
   }, [responseQueue]);
+
+  console.log(messages);
 
   return (
     <div style={{ padding: "20px" }}>
