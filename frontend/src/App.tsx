@@ -1,21 +1,16 @@
-import type { LiveServerMessage, Part } from "@google/genai";
-import { GoogleGenAI, Modality } from "@google/genai/web";
-import { Buffer } from "buffer";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { WaveFile } from "wavefile"; // npm install wavefile
-import { base64Text } from "./base64Text";
-import {
-  useGeminiNativeAudio,
-  type TokensUsageType,
-} from "./hooks/useGeminiNativeAudio";
-import { dummyResponseQueue } from "./ResponseQueue.dummy";
+import type { Part } from "@google/genai";
+import { Modality } from "@google/genai/web";
+import { useCallback, useRef, useState } from "react";
 import { dummyBase64Audio } from "./base64Audio.dummy";
+import { base64Text } from "./base64Text";
+import { useGeminiNativeAudio } from "./hooks/useGeminiNativeAudio";
+import {
+  base64ToAudioBuffer,
+  floatTo16BitPCM,
+  pcmToBase64,
+} from "./utils/audioFunctions";
 
 //console.log("Google API Key:", import.meta.env.VITE_GOOGLE_API_KEY);
-
-type MessageType = undefined | LiveServerMessage;
-
-//console.log("api key", process.env.GOOGLE_API_KEY);
 
 const App = () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -79,6 +74,8 @@ const App = () => {
     clearResponseQueue,
   });
 
+  const [recordedPCMs, setRecordedPCMs] = useState<string[]>([]);
+
   const startRecording = useCallback(async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     const mediaRecorder = new MediaRecorder(stream);
@@ -123,31 +120,9 @@ const App = () => {
         const base64String = pcmToBase64(int16);
 
         console.log("PCM 24000Hz:", base64String);
+        setRecordedPCMs((prev) => [...prev, base64String]);
       }
     };
-
-    function floatTo16BitPCM(float32Array: Float32Array): Int16Array {
-      const output = new Int16Array(float32Array.length);
-      for (let i = 0; i < float32Array.length; i++) {
-        const s = Math.max(-1, Math.min(1, float32Array[i]));
-        output[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
-      }
-      return output;
-    }
-
-    function pcmToBase64(pcmData: Int16Array): string {
-      // Convert Int16Array to Uint8Array (little-endian)
-      const uint8Array = new Uint8Array(pcmData.buffer);
-
-      // Convert to binary string
-      let binary = "";
-      for (let i = 0; i < uint8Array.byteLength; i++) {
-        binary += String.fromCharCode(uint8Array[i]);
-      }
-
-      // Encode to base64
-      return btoa(binary);
-    }
 
     /*
     mediaRecorder.ondataavailable = async (event) => {
@@ -244,8 +219,6 @@ const App = () => {
         Log Messages
       </button>
 
-      <JustDoIt />
-
       <AudioRecorder
         recording={recording}
         audioUrl={audioUrl}
@@ -298,172 +271,41 @@ const App = () => {
       >
         Stop Speaking
       </button>
+      <button
+        onClick={() => {
+          if (recordedPCMs.length === 0) {
+            console.warn("No recorded PCMs to play");
+            return;
+          }
+
+          const playNext = (index = 0) => {
+            console.log("Playing PCM index:", index);
+
+            const audioContext = new AudioContext({ sampleRate: 24000 });
+
+            const base64Audio = recordedPCMs[index];
+            if (!base64Audio) {
+              console.warn("No more recorded PCMs to play");
+              return;
+            }
+
+            const audioBuffer = base64ToAudioBuffer(base64Audio, audioContext);
+            const source = audioContext.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(audioContext.destination);
+            source.start(0);
+            source.onended = () => {
+              playNext(index + 1);
+            };
+          };
+
+          playNext();
+        }}
+      >
+        Play Recorded PCMs
+      </button>
     </div>
   );
-};
-
-function pcmToWav(pcmBase64: string, sampleRate = 24000, numChannels = 1) {
-  const pcmData = atob(pcmBase64); // decode base64 to binary
-  const buffer = new ArrayBuffer(44 + pcmData.length);
-  const view = new DataView(buffer);
-
-  // WAV header
-  const writeString = (offset: number, str: string) => {
-    for (let i = 0; i < str.length; i++) {
-      view.setUint8(offset + i, str.charCodeAt(i));
-    }
-  };
-
-  writeString(0, "RIFF");
-  view.setUint32(4, 36 + pcmData.length, true); // file length
-  writeString(8, "WAVE");
-  writeString(12, "fmt ");
-  view.setUint32(16, 16, true); // PCM chunk size
-  view.setUint16(20, 1, true); // Audio format (1 = PCM)
-  view.setUint16(22, numChannels, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * numChannels * 2, true); // byte rate
-  view.setUint16(32, numChannels * 2, true); // block align
-  view.setUint16(34, 16, true); // bits per sample
-  writeString(36, "data");
-  view.setUint32(40, pcmData.length, true);
-
-  // PCM samples
-  for (let i = 0; i < pcmData.length; i++) {
-    view.setUint8(44 + i, pcmData.charCodeAt(i));
-  }
-
-  return new Blob([view], { type: "audio/wav" });
-}
-
-const JustDoIt = () => {
-  const doIt = async () => {
-    const ai = new GoogleGenAI({
-      apiKey: import.meta.env.VITE_GOOGLE_API_KEY,
-    });
-
-    const model = "gemini-2.5-flash-preview-native-audio-dialog";
-
-    const config = {
-      responseModalities: [Modality.AUDIO],
-      systemInstruction:
-        "You are a helpful assistant and answer in a friendly tone.",
-    };
-    const responseQueue: MessageType[] = [];
-
-    async function waitMessage() {
-      let done = false;
-      let message: MessageType = undefined;
-      while (!done) {
-        message = responseQueue.shift();
-        if (message) {
-          done = true;
-        } else {
-          await new Promise((resolve) => setTimeout(resolve, 100));
-        }
-      }
-      return message;
-    }
-
-    async function handleTurn() {
-      const turns: MessageType[] = [];
-      let done = false;
-      while (!done) {
-        const message = await waitMessage();
-        turns.push(message);
-        if (message?.serverContent && message.serverContent.turnComplete) {
-          done = true;
-        }
-      }
-      return turns;
-    }
-
-    const session = await ai.live.connect({
-      model: model,
-      callbacks: {
-        onopen: function () {
-          console.debug("Opened");
-        },
-        onmessage: function (message) {
-          responseQueue.push(message);
-        },
-        onerror: function (e) {
-          console.debug("Error:", e.message);
-        },
-        onclose: function (e) {
-          console.debug("Close:", e.reason);
-        },
-      },
-      config: config,
-    });
-
-    // Send Audio Chunk
-
-    // Ensure audio conforms to API requirements (16-bit PCM, 16kHz, mono)
-    // Send Audio Chunk
-    // Ensure audio conforms to API requirements (16-bit PCM, 16kHz, mono)
-
-    const base64Audio = base64Text;
-    console.log("Base64 Audio:\n", base64Audio);
-    // If already in correct format, you can use this:
-    // const fileBuffer = fs.readFileSync("sample.pcm");
-    // const base64Audio = Buffer.from(fileBuffer).toString('base64');
-
-    session.sendRealtimeInput({
-      audio: {
-        data: base64Audio,
-        mimeType: "audio/pcm;rate=16000",
-      },
-    });
-
-    const turns = await handleTurn();
-
-    // Combine audio data strings and save as wave file
-    const combinedAudio = turns.reduce((acc: number[], turn) => {
-      if (turn?.data) {
-        const buffer = Buffer.from(turn.data, "base64");
-        const intArray = new Int16Array(
-          buffer.buffer,
-          buffer.byteOffset,
-          buffer.byteLength / Int16Array.BYTES_PER_ELEMENT
-        );
-        return acc.concat(Array.from(intArray));
-      }
-      return acc;
-    }, []);
-
-    const audioBuffer = new Int16Array(combinedAudio);
-
-    const wf = new WaveFile();
-    /*wf.fromScratch(1, 24000, "16", audioBuffer); // output is 24kHz
-    fs.writeFileSync("audio.wav", wf.toBuffer());
-
-    session.close();*/
-
-    console.log("Creating wave file...");
-
-    wf.fromScratch(1, 24000, "16", audioBuffer);
-    console.log("Wave file created");
-
-    // Use browser download instead of fs.writeFileSync
-    const blob = new Blob([wf.toBuffer()], { type: "audio/wav" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "audio.wav";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    console.log("Audio downloaded");
-
-    session.close?.();
-
-    console.log("Session closed");
-  };
-
-  return <button onClick={doIt}>Just Do It</button>;
 };
 
 const AudioRecorder = ({
@@ -492,62 +334,5 @@ const AudioRecorder = ({
     </div>
   );
 };
-
-function base64ToAudioBuffer(
-  base64: string,
-  audioContext: AudioContext
-): AudioBuffer {
-  const binary = atob(base64);
-  const buffer = new ArrayBuffer(binary.length);
-  const view = new DataView(buffer);
-  for (let i = 0; i < binary.length; i++) {
-    view.setUint8(i, binary.charCodeAt(i));
-  }
-
-  const pcm = new Int16Array(buffer);
-  const float32 = new Float32Array(pcm.length);
-  for (let i = 0; i < pcm.length; i++) {
-    float32[i] = pcm[i] / 32768; // Normalize
-  }
-
-  const audioBuffer = audioContext.createBuffer(
-    1, // mono
-    float32.length,
-    24000 // sampleRate
-  );
-
-  audioBuffer.getChannelData(0).set(float32);
-  return audioBuffer;
-}
-
-async function resampleAudioBuffer(
-  audioBuffer: AudioBuffer,
-  targetRate: number
-): Promise<AudioBuffer> {
-  const offlineCtx = new OfflineAudioContext(
-    audioBuffer.numberOfChannels,
-    Math.ceil(audioBuffer.duration * targetRate),
-    targetRate
-  );
-
-  const source = offlineCtx.createBufferSource();
-  source.buffer = audioBuffer;
-  source.connect(offlineCtx.destination);
-  source.start();
-
-  return await offlineCtx.startRendering();
-}
-
-function extractPCM(audioBuffer: AudioBuffer): Int16Array {
-  const channelData = audioBuffer.getChannelData(0); // mono
-  const pcmData = new Int16Array(channelData.length);
-
-  for (let i = 0; i < channelData.length; i++) {
-    // Convert float [-1,1] to 16-bit PCM [-32768, 32767]
-    pcmData[i] = Math.max(-1, Math.min(1, channelData[i])) * 32767;
-  }
-
-  return pcmData;
-}
 
 export default App;
