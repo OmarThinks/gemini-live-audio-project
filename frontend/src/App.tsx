@@ -8,7 +8,7 @@ import {
   useGeminiNativeAudio,
   type TokensUsageType,
 } from "./hooks/useGeminiNativeAudio";
-import { dummyResponseQueue } from "./dummyResponseQueue";
+import { dummyResponseQueue } from "./ResponseQueue.dummy";
 
 //console.log("Google API Key:", import.meta.env.VITE_GOOGLE_API_KEY);
 
@@ -19,15 +19,34 @@ type MessageType = undefined | LiveServerMessage;
 const App = () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [usageQueue, setUsageQueue] = useState<TokensUsageType[]>([]);
-  const [responseQueue, setResponseQueue] =
-    useState<Part[]>(dummyResponseQueue);
+  const [responseQueue, setResponseQueue] = useState<Part[]>([]);
 
   const [recording, setRecording] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunks = useRef<Blob[]>([]);
 
-  const resposeQueueRef = useRef<Part[]>(dummyResponseQueue);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const enqueueResponseQueue = useCallback(
+    (part: Part) => {
+      //console.log("Enqueuing response:", part);
+      setResponseQueue((prev) => [...prev, part]);
+      if (!isPlaying) {
+        setIsPlaying(true);
+        playNext();
+      }
+      /*
+      or
+      setIsPlaying(true);
+      */
+    },
+    [isPlaying]
+  );
+  const clearResponseQueue = useCallback(() => {
+    setResponseQueue([]);
+    setIsPlaying(false);
+  }, []);
 
   const {
     connectSocket,
@@ -67,15 +86,9 @@ const App = () => {
       audio.play();*/
       //audio.st
     },
-    setResponseQueue,
+    enqueueResponseQueue,
+    clearResponseQueue,
   });
-
-  //const [isPlaying, setIsPlaying] = useState(false);
-
-  const timeRef = useRef<number>(0);
-
-  const [isPlaying, setIsPlaying] = useState(false);
-  console.log(isPlaying);
 
   const audioContextRef = useRef<AudioContext | null>(null);
 

@@ -48,7 +48,8 @@ const useGeminiNativeAudio = ({
   onSocketError,
   onSocketClose,
   onAiResponseCompleted,
-  setResponseQueue,
+  enqueueResponseQueue,
+  clearResponseQueue,
 }: //onAiShouldStopSpeaking,
 {
   apiKey: string;
@@ -61,7 +62,8 @@ const useGeminiNativeAudio = ({
   onSocketClose?: (reason: unknown) => void;
   onAiResponseCompleted?: (base64Audio: string) => void;
   onAiShouldStopSpeaking?: () => void;
-  setResponseQueue: React.Dispatch<React.SetStateAction<Part[]>>;
+  enqueueResponseQueue?: (part: Part) => void;
+  clearResponseQueue: () => void;
 }) => {
   const innerResponseQueue = useRef<Part[]>([]);
 
@@ -194,7 +196,8 @@ const useGeminiNativeAudio = ({
             if (parts.length > 0) {
               //console.log("Parts:", parts);
               //console.log("Part inline data:", parts[0].inlineData);
-              setResponseQueue((prev) => [...prev, ...parts]);
+              //setResponseQueue((prev) => [...prev, ...parts]);
+              enqueueResponseQueue?.(parts[0]);
               innerResponseQueue.current = [
                 ...innerResponseQueue.current,
                 ...parts,
@@ -234,7 +237,6 @@ const useGeminiNativeAudio = ({
     setServerStatus,
     onUsageReporting,
     onReceivingMessage,
-    setResponseQueue,
     onSocketError,
     onSocketClose,
   ]);
@@ -252,19 +254,16 @@ const useGeminiNativeAudio = ({
   //console.log("messages", messages);
   //console.log("responseQueue", responseQueue);
 
-  const sendRealtimeInput = useCallback(
-    async (message: string) => {
-      setResponseQueue([]);
-      innerResponseQueue.current = [];
-      session.current?.sendRealtimeInput?.({
-        audio: {
-          data: message,
-          mimeType: "audio/pcm;rate=16000",
-        },
-      });
-    },
-    [setResponseQueue]
-  );
+  const sendRealtimeInput = useCallback(async (message: string) => {
+    clearResponseQueue();
+    innerResponseQueue.current = [];
+    session.current?.sendRealtimeInput?.({
+      audio: {
+        data: message,
+        mimeType: "audio/pcm;rate=16000",
+      },
+    });
+  }, []);
 
   return {
     isConnected,
