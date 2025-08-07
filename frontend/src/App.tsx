@@ -9,6 +9,7 @@ import {
   type TokensUsageType,
 } from "./hooks/useGeminiNativeAudio";
 import { dummyResponseQueue } from "./ResponseQueue.dummy";
+import { dummyBase64Audio } from "./base64Audio.dummy";
 
 //console.log("Google API Key:", import.meta.env.VITE_GOOGLE_API_KEY);
 
@@ -18,7 +19,6 @@ type MessageType = undefined | LiveServerMessage;
 
 const App = () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [usageQueue, setUsageQueue] = useState<TokensUsageType[]>([]);
   const [responseQueue, setResponseQueue] = useState<Part[]>([]);
 
   const [recording, setRecording] = useState(false);
@@ -26,26 +26,15 @@ const App = () => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunks = useRef<Blob[]>([]);
 
-  const [isPlaying, setIsPlaying] = useState(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
 
-  const enqueueResponseQueue = useCallback(
-    (part: Part) => {
-      //console.log("Enqueuing response:", part);
-      setResponseQueue((prev) => [...prev, part]);
-      if (!isPlaying) {
-        setIsPlaying(true);
-        playNext();
-      }
-      /*
-      or
-      setIsPlaying(true);
-      */
-    },
-    [isPlaying]
-  );
+  const enqueueResponseQueue = useCallback((part: Part) => {
+    setResponseQueue((prev) => [...prev, part]);
+  }, []);
   const clearResponseQueue = useCallback(() => {
     setResponseQueue([]);
-    setIsPlaying(false);
+    audioContextRef.current?.suspend();
+    audioContextRef.current = null;
   }, []);
 
   const {
@@ -62,329 +51,33 @@ const App = () => {
     systemInstruction:
       "You are a helpful assistant and answer in a friendly tone.",
     onUsageReporting: (usage) => {
-      setUsageQueue((prev) => {
-        const newUsageQueue = [...prev, usage];
-        console.log("newUsageQueue:", newUsageQueue);
-        return newUsageQueue;
-      });
-    },
-    onReceivingMessage: (message) => {
-      //onReceivingMessage(message);
-      //console.log("Message received:", message);
-      //const base64PcmAudio =
-      //  message?.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
+      console.log("New Usage Report:", usage);
     },
     onAiResponseCompleted(base64Audio) {
-      //playPcmAudio(base64Audio, 24000); // sample rate from the mimeType
-      /*
-      console.log("AI response completed");
-      // Handle AI response completed logic here
+      console.log(base64Audio);
 
-      const wavBlob = pcmToWav(base64Audio, 24000); // sample rate from the mimeType
-      const audioUrl = URL.createObjectURL(wavBlob);
-      const audio = new Audio(audioUrl);
-      audio.play();*/
-      //audio.st
+      if (!(base64Audio && typeof base64Audio === "string")) {
+        return;
+      }
+      if (!audioContextRef.current) {
+        audioContextRef.current = new AudioContext({ sampleRate: 24000 });
+      }
+      try {
+        const audioBuffer = base64ToAudioBuffer(
+          base64Audio,
+          audioContextRef.current
+        );
+        const source = audioContextRef.current.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(audioContextRef.current.destination);
+        source.start(0);
+      } catch (err) {
+        console.error("Playback error:", err);
+      }
     },
     enqueueResponseQueue,
     clearResponseQueue,
   });
-
-  const audioContextRef = useRef<AudioContext | null>(null);
-
-  const playNext = async (index = 0) => {
-    const chunk = responseQueue[index]?.inlineData?.data;
-    if (!chunk) {
-      return;
-    }
-
-    if (!audioContextRef.current) {
-      audioContextRef.current = new AudioContext({ sampleRate: 24000 });
-    }
-
-    try {
-      const audioBuffer = base64ToAudioBuffer(chunk, audioContextRef.current);
-      const source = audioContextRef.current.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(audioContextRef.current.destination);
-
-      source.onended = () => {
-        playNext(index + 1); // recursively play the next chunk
-      };
-
-      source.start(0);
-    } catch (err) {
-      console.error("Playback error:", err);
-    }
-  };
-
-  /*
-  const playNext = () => {
-    const start = new Date();
-    const elapsed = start.getTime() - timeRef.current;
-    timeRef.current = start.getTime();
-    console.log("Time since last play:", elapsed, "ms");
-
-    //console.log(Number(start));
-    const next = resposeQueueRef.current.shift();
-    if (!next || !next.inlineData?.data) {
-      isPlaying.current = false;
-      return;
-    }
-
-    isPlaying.current = true;
-
-    const pcmBase64 = next.inlineData.data;
-    const wavBlob = pcmToWav(pcmBase64, 24000);
-    const audioUrl = URL.createObjectURL(wavBlob);
-    const audio = new Audio(audioUrl);
-
-    audio.onended = () => {
-      playNext(); // Play the next chunk immediately
-    };
-
-    audio.play().catch((err) => {
-      console.error("Audio playback failed:", err);
-      isPlaying.current = false;
-    });
-    const end = new Date();
-    console.log("Audio created in", end.getTime() - start.getTime(), "ms");
-  };*/
-
-  /*
-  const playNext = useCallback(() => {
-    if (resposeQueueRef.current.length === 0) {
-      console.log("No responses to play");
-      //setIsPlaying(false);
-      isPlaying.current = false;
-      return;
-    }
-
-    //const newResponseQueue = [...responseQueue];
-
-    //const response = 
-    //console.log(responseQueue.length, newResponseQueue.length);
-    //setResponseQueue(() => newResponseQueue);
-    //setIsPlaying(true);
-    const response = resposeQueueRef.current.shift();
-
-    console.log("Playing next response:", response);
-    // Here you can handle the playback of the response data
-
-    const pcmBase64 = response?.inlineData?.data; // Assuming response.pcmAudio.data is the base64 PCM audio
-
-    if (!pcmBase64) {
-      console.warn("No PCM audio data found in response");
-      return;
-    }
-
-    const wavBlob = pcmToWav(pcmBase64, 24000); // sample rate from the mimeType
-    const audioUrl = URL.createObjectURL(wavBlob);
-    const audio = new Audio(audioUrl);
-    audio.onended = () => {
-      //setIsPlaying(false);
-      //playNext();
-    };
-    //audio.play().then(() => {
-    //  playNext();
-    //});
-  }, [responseQueue]);*/
-
-  /*
-  useEffect(() => {
-    if (!isPlaying && responseQueue.length > 0) {
-      console.log(
-        "Starting playback of next response From the Effect",
-        isPlaying,
-        responseQueue.length
-      );
-      setIsPlaying(true);
-      playNext();
-    }
-  }, [isPlaying, responseQueue, playNext]);*/
-
-  /*
-  useEffect(() => {
-    if (!isPlaying) {
-      playNext();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playNext, responseQueue]);*/
-
-  /*
-  const [messages, setMessages] = useState<string[]>([]);
-
-  const session = useRef<Session | null>(null);
-  const isConnected = !!session?.current;
-  const [responseQueue, setResponseQueue] = useState<MessageType[]>([]);
-  const [usageQueue, setUsageQueue] = useState<TokensUsageType[]>([]);
-  const [serverStatus, _setServerStatus] = useState<ServerStatusType>(
-    ServerStatusEnum.Disconnected
-  );
-
-  const setServerStatus: React.Dispatch<
-    React.SetStateAction<ServerStatusType>
-  > = (status) => {
-    _setServerStatus(status);
-  };
-
-  const connectSocket = useCallback(async () => {
-    const _session = await ai.live.connect({
-      model: model,
-      callbacks: {
-        onopen: function () {
-          console.debug("Opened");
-          setMessages((prev) => [...prev, "Connected to Google GenAI"]);
-          setServerStatus(ServerStatusEnum.Listening);
-        },
-        onmessage: function (message) {
-          recordTokensUsage({
-            message,
-            setUsageQueue,
-          });
-          updateServerStatusFromMessage({
-            message,
-            setServerStatus,
-          });
-          setResponseQueue((prev) => [...prev, message]);
-          setMessages((prev) => [...prev, `Message received: ${message.data}`]);
-        },
-        onerror: function (e) {
-          console.debug("Error:", e.message);
-          setMessages((prev) => [...prev, `Error: ${e.message}`]);
-        },
-        onclose: function (e) {
-          console.debug("Close:", e.reason);
-          setMessages((prev) => [...prev, `Disconnected: ${e.reason}`]);
-          session.current = null;
-          setServerStatus(ServerStatusEnum.Disconnected);
-        },
-      },
-      config: config,
-    });
-
-    console.log("Connected to Google GenAI:", _session);
-
-    session.current = _session;
-  }, []);
-
-  console.log("responseQueue", JSON.stringify(responseQueue));
-  console.log("messages", JSON.stringify(messages));
-  console.log("usageQueue", JSON.stringify(usageQueue));
-  console.log("serverStatus", serverStatus);
-
-  const disconnectSocket = useCallback(() => {
-    session?.current?.close?.();
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      session?.current?.close?.();
-    };
-  }, []);
-  */
-
-  /*
-  const waitMessage = useCallback(async () => {
-    let done = false;
-    let message: MessageType = undefined;
-    while (!done) {
-      //message = responseQueue.shift();
-      const newResponseQueue = [...responseQueue];
-      message = newResponseQueue.shift();
-      setResponseQueue(newResponseQueue);
-      if (message) {
-        done = true;
-      } else {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-    }
-    return message;
-  }, [responseQueue]);
-
-  const handleTurn = useCallback(async () => {
-    const turns: MessageType[] = [];
-    let done = false;
-    while (!done) {
-      const message = await waitMessage();
-      turns.push(message);
-      if (message?.serverContent && message.serverContent.turnComplete) {
-        done = true;
-      }
-    }
-    return turns;
-  }, [waitMessage]);
-
-  const ping = useCallback(async () => {
-    const base64Audio = base64Text;
-
-    console.log("Base64 Audio:\n", base64Audio);
-    // If already in correct format, you can use this:
-    // const fileBuffer = fs.readFileSync("sample.pcm");
-    // const base64Audio = Buffer.from(fileBuffer).toString('base64');
-
-    session.current?.sendRealtimeInput?.({
-      audio: {
-        data: base64Audio,
-        mimeType: "audio/pcm;rate=16000",
-      },
-    });
-    console.log("Audio chunk sent");
-
-    const turns = await handleTurn();
-    console.log("Turns received:", turns);
-
-    // Combine audio data strings and save as wave file
-    const combinedAudio = turns.reduce((acc: number[], turn) => {
-      if (turn?.data) {
-        const buffer = Buffer.from(turn.data, "base64");
-        const intArray = new Int16Array(
-          buffer.buffer,
-          buffer.byteOffset,
-          buffer.byteLength / Int16Array.BYTES_PER_ELEMENT
-        );
-        return acc.concat(Array.from(intArray));
-      }
-      return acc;
-    }, []);
-    
-
-    console.log("Combined audio length:", combinedAudio);
-
-    const audioBuffer = new Int16Array(combinedAudio);
-
-    console.log("Audio buffer created with length:", audioBuffer.length);
-
-    const wf = new WaveFile();
-
-    console.log("Creating wave file...");
-
-    wf.fromScratch(1, 24000, "16", audioBuffer);
-    console.log("Wave file created");
-
-    // Use browser download instead of fs.writeFileSync
-    const blob = new Blob([wf.toBuffer()], { type: "audio/wav" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "audio.wav";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    console.log("Audio downloaded");
-
-    session.current?.close?.();
-
-    console.log("Session closed");
-  }, []);
-  */
-
-  //console.log("responseQueue", JSON.stringify(responseQueue));
-  //console.log("messages", JSON.stringify(messages));
-  //console.log("usageQueue", JSON.stringify(usageQueue));
-  //console.log("serverStatus", serverStatus);
 
   const startRecording = useCallback(async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -395,6 +88,7 @@ const App = () => {
     mediaRecorder.ondataavailable = (event) => {
       if (event.data.size > 0) {
         audioChunks.current.push(event.data);
+        console.log("Audio chunk available:", event.data);
       }
     };
 
@@ -412,7 +106,7 @@ const App = () => {
       reader.readAsDataURL(audioBlob);
     };
 
-    mediaRecorder.start();
+    mediaRecorder.start(300);
     setRecording(true);
   }, []);
 
@@ -495,7 +189,38 @@ const App = () => {
         Play Recorded Audio
       </button>
 
-      <button onClick={() => playNext()}>Play Next</button>
+      <button
+        onClick={() => {
+          if (!(dummyBase64Audio && typeof dummyBase64Audio === "string")) {
+            return;
+          }
+          if (!audioContextRef.current) {
+            audioContextRef.current = new AudioContext({ sampleRate: 24000 });
+          }
+          try {
+            const audioBuffer = base64ToAudioBuffer(
+              dummyBase64Audio,
+              audioContextRef.current
+            );
+            const source = audioContextRef.current.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(audioContextRef.current.destination);
+            source.start(0);
+          } catch (err) {
+            console.error("Playback error:", err);
+          }
+        }}
+      >
+        Speak
+      </button>
+      <button
+        onClick={() => {
+          audioContextRef.current?.suspend();
+          audioContextRef.current = null;
+        }}
+      >
+        Stop Speaking
+      </button>
     </div>
   );
 };
@@ -533,13 +258,6 @@ function pcmToWav(pcmBase64: string, sampleRate = 24000, numChannels = 1) {
 
   return new Blob([view], { type: "audio/wav" });
 }
-
-const playPcmAudio = (pcmBase64: string, sampleRate = 24000) => {
-  const wavBlob = pcmToWav(pcmBase64, sampleRate); // sample rate from the mimeType
-  const audioUrl = URL.createObjectURL(wavBlob);
-  const audio = new Audio(audioUrl);
-  audio.play();
-};
 
 const JustDoIt = () => {
   const doIt = async () => {
