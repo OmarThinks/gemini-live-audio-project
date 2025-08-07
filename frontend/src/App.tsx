@@ -85,12 +85,89 @@ const App = () => {
     mediaRecorderRef.current = mediaRecorder;
     audioChunks.current = [];
 
+    /*
     mediaRecorder.ondataavailable = (event) => {
       if (event.data.size > 0) {
         audioChunks.current.push(event.data);
         console.log("Audio chunk available:", event.data);
       }
+    };*/
+    const audioContext = new AudioContext(); // default sampleRate, often 44100 or 48000
+
+    mediaRecorder.ondataavailable = async (event) => {
+      if (event.data.size > 0) {
+        audioChunks.current.push(event.data);
+
+        const blob = new Blob(audioChunks.current, { type: "audio/webm" });
+        const arrayBuffer = await blob.arrayBuffer();
+
+        const audioContext = new AudioContext(); // default 48000 Hz
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+        const offlineCtx = new OfflineAudioContext({
+          numberOfChannels: 1,
+          length: Math.ceil(audioBuffer.duration * 24000),
+          sampleRate: 24000,
+        });
+
+        const source = offlineCtx.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(offlineCtx.destination);
+        source.start();
+
+        const resampledBuffer = await offlineCtx.startRendering();
+        const pcm = resampledBuffer.getChannelData(0); // Float32Array [-1, 1]
+
+        // Optionally convert to 16-bit PCM
+        const int16 = floatTo16BitPCM(pcm);
+        const base64String = pcmToBase64(int16);
+
+        console.log("PCM 24000Hz:", base64String);
+      }
     };
+
+    function floatTo16BitPCM(float32Array: Float32Array): Int16Array {
+      const output = new Int16Array(float32Array.length);
+      for (let i = 0; i < float32Array.length; i++) {
+        const s = Math.max(-1, Math.min(1, float32Array[i]));
+        output[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+      }
+      return output;
+    }
+
+    function pcmToBase64(pcmData: Int16Array): string {
+      // Convert Int16Array to Uint8Array (little-endian)
+      const uint8Array = new Uint8Array(pcmData.buffer);
+
+      // Convert to binary string
+      let binary = "";
+      for (let i = 0; i < uint8Array.byteLength; i++) {
+        binary += String.fromCharCode(uint8Array[i]);
+      }
+
+      // Encode to base64
+      return btoa(binary);
+    }
+
+    /*
+    mediaRecorder.ondataavailable = async (event) => {
+      if (event.data.size > 0) {
+        audioChunks.current.push(event.data);
+        const arrayBuffer = await event.data.arrayBuffer();
+        const decodedAudioBuffer = await audioContext.decodeAudioData(
+          arrayBuffer
+        );
+
+        const resampledBuffer = await resampleAudioBuffer(
+          decodedAudioBuffer,
+          24000
+        );
+        const pcmData = extractPCM(resampledBuffer);
+
+        console.log("PCM 24000Hz data:", pcmData);
+        // You can now use `pcmData` as raw PCM Int16Array
+      }
+    };*/
 
     mediaRecorder.onstop = () => {
       const audioBlob = new Blob(audioChunks.current, { type: "audio/webm" });
@@ -441,6 +518,36 @@ function base64ToAudioBuffer(
 
   audioBuffer.getChannelData(0).set(float32);
   return audioBuffer;
+}
+
+async function resampleAudioBuffer(
+  audioBuffer: AudioBuffer,
+  targetRate: number
+): Promise<AudioBuffer> {
+  const offlineCtx = new OfflineAudioContext(
+    audioBuffer.numberOfChannels,
+    Math.ceil(audioBuffer.duration * targetRate),
+    targetRate
+  );
+
+  const source = offlineCtx.createBufferSource();
+  source.buffer = audioBuffer;
+  source.connect(offlineCtx.destination);
+  source.start();
+
+  return await offlineCtx.startRendering();
+}
+
+function extractPCM(audioBuffer: AudioBuffer): Int16Array {
+  const channelData = audioBuffer.getChannelData(0); // mono
+  const pcmData = new Int16Array(channelData.length);
+
+  for (let i = 0; i < channelData.length; i++) {
+    // Convert float [-1,1] to 16-bit PCM [-32768, 32767]
+    pcmData[i] = Math.max(-1, Math.min(1, channelData[i])) * 32767;
+  }
+
+  return pcmData;
 }
 
 export default App;
