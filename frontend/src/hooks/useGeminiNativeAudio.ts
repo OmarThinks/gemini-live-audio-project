@@ -211,6 +211,7 @@ const useGeminiNativeAudio = ({
         },
         onclose: function (e) {
           console.debug("Close:", e.reason);
+          console.log("Session closed:", e);
           setMessages((prev) => [...prev, `Disconnected: ${e.reason}`]);
           session.current = null;
           setServerStatus(ServerStatusEnum.Disconnected);
