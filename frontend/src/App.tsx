@@ -158,7 +158,8 @@ const App = () => {
       reader.readAsDataURL(audioBlob);
     };
 
-    mediaRecorder.start(300);
+    setRecordedPCMs([]);
+    mediaRecorder.start();
     setRecording(true);
   }, []);
 
