@@ -1,5 +1,18 @@
 ✅
 
+# HANDLING MESSAGE QUEUE
+
+- start by taking the responseQueue in a file, and make it the initial state
+- Create a function called `playNext`
+- Create a state called `isPlaying`
+- make sure that `playNext` is running smoothly on the iniutial state
+- remove the initial state temporarily until we stabilize live
+- We keep shifting from the message queue as long as it's length it's length is more than 0
+- On receiving a message, if `isPlaying`, just add the message, else, set isPlaying to true, and Shift and play recursively
+- remove the initial state totally
+
+# Hey
+
 - install dependencies ✅
 - connect with a socket to the backend as in the example ✅
 - Create a minimal websocket endpoint, make just respond with pong ✅
