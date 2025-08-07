@@ -72,10 +72,40 @@ const App = () => {
 
   //const [isPlaying, setIsPlaying] = useState(false);
 
-  const isPlaying = useRef(false);
-
   const timeRef = useRef<number>(0);
 
+  const [isPlaying, setIsPlaying] = useState(false);
+  console.log(isPlaying);
+
+  const audioContextRef = useRef<AudioContext | null>(null);
+
+  const playNext = async (index = 0) => {
+    const chunk = responseQueue[index]?.inlineData?.data;
+    if (!chunk) {
+      return;
+    }
+
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioContext({ sampleRate: 24000 });
+    }
+
+    try {
+      const audioBuffer = base64ToAudioBuffer(chunk, audioContextRef.current);
+      const source = audioContextRef.current.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioContextRef.current.destination);
+
+      source.onended = () => {
+        playNext(index + 1); // recursively play the next chunk
+      };
+
+      source.start(0);
+    } catch (err) {
+      console.error("Playback error:", err);
+    }
+  };
+
+  /*
   const playNext = () => {
     const start = new Date();
     const elapsed = start.getTime() - timeRef.current;
@@ -106,7 +136,7 @@ const App = () => {
     });
     const end = new Date();
     console.log("Audio created in", end.getTime() - start.getTime(), "ms");
-  };
+  };*/
 
   /*
   const playNext = useCallback(() => {
@@ -452,8 +482,7 @@ const App = () => {
         Play Recorded Audio
       </button>
 
-      <button onClick={playNext}>Play Next</button>
-      <AudioPlayer />
+      <button onClick={() => playNext()}>Play Next</button>
     </div>
   );
 };
@@ -629,132 +658,6 @@ const JustDoIt = () => {
   return <button onClick={doIt}>Just Do It</button>;
 };
 
-const AudioPlayer = memo(() => {
-  const [responseQueue, setResponseQueue] =
-    useState<Part[]>(dummyResponseQueue);
-  const [isPlaying, setIsPlaying] = useState(false);
-  console.log(isPlaying);
-
-  const timeRef = useRef<number>(0);
-
-  /*
-  const playNext = () => {
-    const start = new Date();
-    const elapsed = start.getTime() - timeRef.current;
-    timeRef.current = start.getTime();
-    console.log("Time since last play:", elapsed, "ms");
-
-    //console.log(Number(start));
-
-    const newResponseQueue = [...responseQueue];
-    const next = newResponseQueue.shift();
-
-    setResponseQueue(newResponseQueue);
-
-    if (!next || !next.inlineData?.data) {
-      console.log("No more responses to play");
-      setIsPlaying(false);
-      return;
-    }
-
-    setIsPlaying(true);
-
-    const pcmBase64 = next.inlineData.data;
-    const wavBlob = pcmToWav(pcmBase64, 24000);
-    const audioUrl = URL.createObjectURL(wavBlob);
-    const audio = new Audio(audioUrl);
-
-    audio.onended = () => {
-      //playNext(); // Play the next chunk immediately
-      setIsPlaying(false);
-    };
-
-    audio.play().catch((err) => {
-      console.error("Audio playback failed:", err);
-      //setIsPlaying(false);
-    });
-    const end = new Date();
-    console.log("Audio created in", end.getTime() - start.getTime(), "ms");
-  };*/
-
-  /*
-  const playNext = (index: number = 0) => {
-    const start = new Date();
-    const part = responseQueue[index];
-    //console.log("Playing next chunk at index:", index, part);
-
-    if (part === undefined) {
-      return;
-    }
-
-    const pcmBase64 = part.inlineData?.data as string;
-    const wavBlob = pcmToWav(pcmBase64, 24000);
-    const audioUrl = URL.createObjectURL(wavBlob);
-    const audio = new Audio(audioUrl);
-    audio.onended = () => {
-      const end = new Date();
-      console.log(
-        "Audio played and ednded in",
-        end.getTime() - start.getTime(),
-        "ms"
-      );
-      playNext(index + 1); // Play the next chunk immediately
-    };
-    audio.play();
-    const endRunningFunction = new Date();
-    console.log(
-      "playNext function ended in",
-      endRunningFunction.getTime() - start.getTime(),
-      "ms"
-    );
-  };
-  */
-
-  const audioContextRef = useRef<AudioContext | null>(null);
-
-  const playNext = async (index = 0) => {
-    const chunk = responseQueue[index]?.inlineData?.data;
-    if (!chunk) {
-      return;
-    }
-
-    if (!audioContextRef.current) {
-      audioContextRef.current = new AudioContext({ sampleRate: 24000 });
-    }
-
-    try {
-      const audioBuffer = base64ToAudioBuffer(chunk, audioContextRef.current);
-      const source = audioContextRef.current.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(audioContextRef.current.destination);
-
-      source.onended = () => {
-        playNext(index + 1); // recursively play the next chunk
-      };
-
-      source.start(0);
-    } catch (err) {
-      console.error("Playback error:", err);
-    }
-  };
-
-  /*
-  useEffect(() => {
-    if (!isPlaying && responseQueue.length > 0) {
-      console.log(
-        "Starting playback of next response From the Effect",
-        isPlaying,
-        responseQueue.length
-      );
-      setIsPlaying(true);
-      playNext();
-    }
-  }, [isPlaying, responseQueue, playNext]);
-  */
-
-  return <button onClick={() => playNext()}>Play Next</button>;
-});
-
 const AudioRecorder = ({
   recording,
   audioUrl,
@@ -809,6 +712,4 @@ function base64ToAudioBuffer(
   return audioBuffer;
 }
 
-//export default App;
-
-export default AudioPlayer;
+export default App;

@@ -2,14 +2,10 @@
 
 # HANDLING MESSAGE QUEUE
 
-- start by taking the responseQueue in a file, and make it the initial state
-- Create a function called `playNext`
-- Create a state called `isPlaying`
-- make sure that `playNext` is running smoothly on the iniutial state
-- remove the initial state temporarily until we stabilize live
-- We keep shifting from the message queue as long as it's length it's length is more than 0
-- On receiving a message, if `isPlaying`, just add the message, else, set isPlaying to true, and Shift and play recursively
-- remove the initial state totally
+- create functions called `enqueueResponseQueue`, `emptyResponseQueue`
+- Make The hook use these functions instead
+- `enqueueQueue` processes the item, and enforces it to be in the correct format to save time during playing sounds
+- Now, responseQueue is not a `Part`, it's in the exact format to be displayed
 
 # Hey
 
