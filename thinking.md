@@ -2,7 +2,8 @@
 
 # HANDLING MESSAGE QUEUE
 
-- usage should be handled on frontend side, and the just returns the usage object as it is
+- Clear useless button
+- Document
 
 # Hey
 

@@ -109,7 +109,7 @@ const App = () => {
 
   return (
     <div style={{ padding: "20px" }}>
-      <h1>WebSocket Test</h1>
+      <h1>Google Gemini Live Audio</h1>
       <p>Status: {isConnected ? "Connected" : "Disconnected"}</p>
 
       {isConnected ? (
