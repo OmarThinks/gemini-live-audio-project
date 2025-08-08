@@ -70,8 +70,8 @@ const App = () => {
         console.error("Playback error:", err);
       }
     },
-    enqueueResponseQueue,
-    clearResponseQueue,
+    onResponseChunk: enqueueResponseQueue,
+    onUserInterruption: clearResponseQueue,
   });
 
   const [recordedPCM, setRecordedPCM] = useState<string>("");

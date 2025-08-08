@@ -2,10 +2,11 @@
 
 # HANDLING MESSAGE QUEUE
 
-- create functions called `enqueueResponseQueue`, `emptyResponseQueue`
-- Make The hook use these functions instead
-- `enqueueQueue` processes the item, and enforces it to be in the correct format to save time during playing sounds
-- Now, responseQueue is not a `Part`, it's in the exact format to be displayed
+- Export message queue
+- rename functions: `onResponseChunk`, `onUserInterruption`
+- redo the whole thing of recording audio and sending it
+- enable two modes, immediate response, or onResponseComplete
+- remove the server status things
 
 # Hey
 
