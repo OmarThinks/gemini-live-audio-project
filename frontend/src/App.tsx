@@ -1,21 +1,13 @@
 import { Modality } from "@google/genai/web";
 import { useCallback, useRef, useState } from "react";
-import { dummyBase64Audio } from "./base64Audio.dummy";
 import { base64Text } from "./base64Text";
 import { useGeminiNativeAudio } from "./hooks/useGeminiNativeAudio";
-import {
-  base64ToAudioBuffer,
-  floatTo16BitPCM,
-  pcmToBase64,
-} from "./utils/audioFunctions";
 
 //console.log("Google API Key:", import.meta.env.VITE_GOOGLE_API_KEY);
 
 const App = () => {
   const [recording, setRecording] = useState(false);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunks = useRef<Blob[]>([]);
 
   const audioContextRef = useRef<AudioContext | null>(null);
 
@@ -58,7 +50,7 @@ const App = () => {
       }
     },
     onUserInterruption: () => {
-      // TODO: make the audio stop speaking
+      audioContextRef.current = null;
     },
   });
 
@@ -68,49 +60,6 @@ const App = () => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     const mediaRecorder = new MediaRecorder(stream);
     mediaRecorderRef.current = mediaRecorder;
-    audioChunks.current = [];
-
-    /*
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        audioChunks.current.push(event.data);
-        console.log("Audio chunk available:", event.data);
-      }
-    };*/
-    //const audioContext = new AudioContext(); // default sampleRate, often 44100 or 48000
-
-    /*mediaRecorder.ondataavailable = async (event) => {
-      if (event.data.size > 0) {
-        audioChunks.current.push(event.data);
-
-        const blob = new Blob(audioChunks.current, { type: "audio/webm" });
-        const arrayBuffer = await blob.arrayBuffer();
-
-        const audioContext = new AudioContext(); // default 48000 Hz
-        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-
-        const offlineCtx = new OfflineAudioContext({
-          numberOfChannels: 1,
-          length: Math.ceil(audioBuffer.duration * 24000),
-          sampleRate: 24000,
-        });
-
-        const source = offlineCtx.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(offlineCtx.destination);
-        source.start();
-
-        const resampledBuffer = await offlineCtx.startRendering();
-        const pcm = resampledBuffer.getChannelData(0); // Float32Array [-1, 1]
-
-        // Optionally convert to 16-bit PCM
-        const int16 = floatTo16BitPCM(pcm);
-        const base64String = pcmToBase64(int16);
-
-        console.log("PCM 24000Hz:", base64String);
-        setRecordedPCM(base64String);
-      }
-    };*/
 
     mediaRecorder.ondataavailable = async (event) => {
       const audioChunks = [];
@@ -135,41 +84,6 @@ const App = () => {
       }
     };
 
-    /*
-    mediaRecorder.ondataavailable = async (event) => {
-      if (event.data.size > 0) {
-        audioChunks.current.push(event.data);
-        const arrayBuffer = await event.data.arrayBuffer();
-        const decodedAudioBuffer = await audioContext.decodeAudioData(
-          arrayBuffer
-        );
-
-        const resampledBuffer = await resampleAudioBuffer(
-          decodedAudioBuffer,
-          24000
-        );
-        const pcmData = extractPCM(resampledBuffer);
-
-        console.log("PCM 24000Hz data:", pcmData);
-        // You can now use `pcmData` as raw PCM Int16Array
-      }
-    };*/
-
-    /*
-    mediaRecorder.onstop = () => {
-      const audioBlob = new Blob(audioChunks.current, { type: "audio/webm" });
-      const url = URL.createObjectURL(audioBlob);
-      setAudioUrl(url);
-
-      // Optional: base64 version
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = reader.result?.toString().split(",")[1];
-        console.log("Base64 Audio:", base64); // Do something with it
-      };
-      reader.readAsDataURL(audioBlob);
-    };*/
-
     setRecordedPCM("");
     mediaRecorder.start();
     setRecording(true);
@@ -179,10 +93,6 @@ const App = () => {
     mediaRecorderRef.current?.stop();
     setRecording(false);
   }, []);
-
-  //console.log(messages);
-
-  //console.log("responseQueue", JSON.stringify(responseQueue));
 
   return (
     <div style={{ padding: "20px" }}>
@@ -233,50 +143,12 @@ const App = () => {
         Log Messages
       </button>
 
-      <AudioRecorder
-        recording={recording}
-        audioUrl={audioUrl}
-        startRecording={startRecording}
-        stopRecording={stopRecording}
-      />
+      <div>
+        <button onClick={recording ? stopRecording : startRecording}>
+          {recording ? "Stop Recording" : "Start Recording"}
+        </button>
+      </div>
 
-      <button
-        onClick={() => {
-          const audioBlob = new Blob(audioChunks.current, {
-            type: "audio/webm",
-          });
-          const url = URL.createObjectURL(audioBlob);
-          const audio = new Audio(url);
-          audio.play();
-        }}
-      >
-        Play Recorded Audio
-      </button>
-
-      <button
-        onClick={() => {
-          if (!(dummyBase64Audio && typeof dummyBase64Audio === "string")) {
-            return;
-          }
-          if (!audioContextRef.current) {
-            audioContextRef.current = new AudioContext({ sampleRate: 24000 });
-          }
-          try {
-            const audioBuffer = base64ToAudioBuffer(
-              dummyBase64Audio,
-              audioContextRef.current
-            );
-            const source = audioContextRef.current.createBufferSource();
-            source.buffer = audioBuffer;
-            source.connect(audioContextRef.current.destination);
-            source.start(0);
-          } catch (err) {
-            console.error("Playback error:", err);
-          }
-        }}
-      >
-        Speak
-      </button>
       <button
         onClick={() => {
           audioContextRef.current?.suspend();
@@ -329,7 +201,10 @@ const App = () => {
       <div>
         <button
           onClick={() => {
-            playPCMBase64(base64Text);
+            playPCMBase64({
+              base64String: base64Text,
+              sampleRate: 16000,
+            });
           }}
         >
           Play Ping Voice
@@ -338,7 +213,10 @@ const App = () => {
       <div>
         <button
           onClick={() => {
-            playPCMBase64(recordedPCM);
+            playPCMBase64({
+              base64String: recordedPCM,
+              sampleRate: 16000,
+            });
           }}
         >
           Play Recorded PCM
@@ -348,9 +226,13 @@ const App = () => {
   );
 };
 
-function playPCMBase64(base64String: string) {
-  const sampleRate = 16000;
-
+function playPCMBase64({
+  base64String,
+  sampleRate,
+}: {
+  base64String: string;
+  sampleRate: number;
+}) {
   // Convert base64 to ArrayBuffer
   const binaryString = atob(base64String);
   const len = binaryString.length;
@@ -380,7 +262,10 @@ function playPCMBase64(base64String: string) {
 }
 
 // Helper: Resample AudioBuffer to 16000 Hz
-async function resampleAudioBuffer(audioBuffer, targetSampleRate) {
+async function resampleAudioBuffer(
+  audioBuffer: AudioBuffer,
+  targetSampleRate: number
+) {
   const offlineCtx = new OfflineAudioContext(
     audioBuffer.numberOfChannels,
     audioBuffer.duration * targetSampleRate,
@@ -395,18 +280,18 @@ async function resampleAudioBuffer(audioBuffer, targetSampleRate) {
 }
 
 // Helper: Convert AudioBuffer to Int16 PCM
-function convertToPCM16(audioBuffer) {
+function convertToPCM16(audioBuffer: AudioBuffer) {
   const channelData = audioBuffer.getChannelData(0); // mono
   const pcm16 = new Int16Array(channelData.length);
   for (let i = 0; i < channelData.length; i++) {
-    let s = Math.max(-1, Math.min(1, channelData[i]));
+    const s = Math.max(-1, Math.min(1, channelData[i]));
     pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
   }
   return pcm16;
 }
 
 // Helper: Convert ArrayBuffer to Base64
-function arrayBufferToBase64(buffer) {
+function arrayBufferToBase64(buffer: ArrayBuffer) {
   let binary = "";
   const bytes = new Uint8Array(buffer);
   for (let i = 0; i < bytes.byteLength; i++) {
@@ -415,31 +300,31 @@ function arrayBufferToBase64(buffer) {
   return btoa(binary);
 }
 
-const AudioRecorder = ({
-  recording,
-  audioUrl,
-  startRecording,
-  stopRecording,
-}: {
-  recording: boolean;
-  audioUrl: string | null;
-  startRecording: () => Promise<void>;
-  stopRecording: () => void;
-}) => {
-  return (
-    <div>
-      <button onClick={recording ? stopRecording : startRecording}>
-        {recording ? "Stop Recording" : "Start Recording"}
-      </button>
+function base64ToAudioBuffer(
+  base64: string,
+  audioContext: AudioContext
+): AudioBuffer {
+  const binary = atob(base64);
+  const buffer = new ArrayBuffer(binary.length);
+  const view = new DataView(buffer);
+  for (let i = 0; i < binary.length; i++) {
+    view.setUint8(i, binary.charCodeAt(i));
+  }
 
-      {audioUrl && (
-        <div>
-          <h3>Playback:</h3>
-          <audio controls src={audioUrl} />
-        </div>
-      )}
-    </div>
+  const pcm = new Int16Array(buffer);
+  const float32 = new Float32Array(pcm.length);
+  for (let i = 0; i < pcm.length; i++) {
+    float32[i] = pcm[i] / 32768; // Normalize
+  }
+
+  const audioBuffer = audioContext.createBuffer(
+    1, // mono
+    float32.length,
+    24000 // sampleRate
   );
-};
+
+  audioBuffer.getChannelData(0).set(float32);
+  return audioBuffer;
+}
 
 export default App;
