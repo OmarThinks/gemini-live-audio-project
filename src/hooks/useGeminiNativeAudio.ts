@@ -39,7 +39,7 @@ const useGeminiNativeAudio = ({
   const session = useRef<Session | null>(null);
   const isConnected = !!session?.current;
 
-  const _targetTokens = targetTokens ? `${targetTokens}` : undefined; // Default to 12800 if not provided
+  const _targetTokens = targetTokens ? `${targetTokens}` : undefined;
 
   const ai = useMemo(() => {
     return new GoogleGenAI({
