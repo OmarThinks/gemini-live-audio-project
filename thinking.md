@@ -2,10 +2,10 @@
 
 # HANDLING MESSAGE QUEUE
 
-- Export message queue
-- rename functions: `onResponseChunk`, `onUserInterruption`
-- redo the whole thing of recording audio and sending it
+- Export message queue ✅
+- rename functions: `onResponseChunk`, `onUserInterruption` ✅
 - enable two modes, immediate response, or onResponseComplete
+- redo the whole thing of recording audio and sending it
 - remove the server status things ✅
 
 # Hey

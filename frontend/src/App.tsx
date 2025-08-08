@@ -19,6 +19,8 @@ const App = () => {
 
   const audioContextRef = useRef<AudioContext | null>(null);
 
+  const [waitFullResponse, setWaitFullResponse] = useState(false);
+
   const {
     connectSocket,
     disconnectSocket,
@@ -164,6 +166,19 @@ const App = () => {
     <div style={{ padding: "20px" }}>
       <h1>WebSocket Test</h1>
       <p>Status: {isConnected ? "Connected" : "Disconnected"}</p>
+
+      <div className="flex items-center gap-10 flex-row">
+        <input
+          type="checkbox"
+          onChange={(e) => {
+            setWaitFullResponse(e.currentTarget.checked);
+          }}
+        />
+        <span className="ml-3">
+          Wait for full response before displaying the audio
+        </span>
+      </div>
+
       {isConnected ? (
         <div className=" gap-3 flex flex-col">
           <button
