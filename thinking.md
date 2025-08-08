@@ -2,17 +2,7 @@
 
 # HANDLING MESSAGE QUEUE
 
-- Export message queue ✅
-- rename functions: `onResponseChunk`, `onUserInterruption` ✅
-- enable two modes, immediate response, or onResponseComplete
-- redo the whole thing of recording audio and sending it
-- remove the server status things ✅
-- create a function called `playPcmText`
-- Create 2 functions
-  - `playPingText`
-  - `playRecordedPCM`
-- these 2 functions use the same `playPcmText`
-- for each one of the 2 play functions, create a button
+- usage should be handled on frontend side, and the just returns the usage object as it is
 
 # Hey
 

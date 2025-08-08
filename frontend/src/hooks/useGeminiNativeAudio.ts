@@ -1,12 +1,8 @@
+import type { UsageMetadata } from "@google/genai";
 import type { LiveServerMessage, Part } from "@google/genai/web";
-import {
-  GoogleGenAI,
-  MediaModality,
-  Modality,
-  Session,
-} from "@google/genai/web";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { GoogleGenAI, Modality, Session } from "@google/genai/web";
 import { Buffer } from "buffer";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const model = "gemini-2.5-flash-preview-native-audio-dialog";
 
@@ -25,7 +21,7 @@ const useGeminiNativeAudio = ({
   apiKey: string;
   responseModalities?: Modality[];
   systemInstruction?: string;
-  onUsageReporting?: (usage: TokensUsageType) => void;
+  onUsageReporting?: (usage: UsageMetadata) => void;
   onReceivingMessage?: (message: LiveServerMessage) => void;
   onSocketError?: (error: unknown) => void;
   onSocketClose?: (reason: unknown) => void;
@@ -58,10 +54,9 @@ const useGeminiNativeAudio = ({
         },
         onmessage: function (message) {
           setMessages((prev) => [...prev, `Message received: ${message.data}`]);
-          recordTokensUsage({
-            message,
-            onUsageReporting: onUsageReporting,
-          });
+          if (message.usageMetadata) {
+            onUsageReporting?.(message.usageMetadata);
+          }
           onReceivingMessage?.(message);
 
           if (message.serverContent?.turnComplete) {
@@ -177,54 +172,6 @@ type TokensUsageType = {
   };
 };
 
-const recordTokensUsage = ({
-  message,
-  onUsageReporting,
-}: {
-  message: LiveServerMessage;
-  onUsageReporting?: (usage: TokensUsageType) => void;
-}): void => {
-  if (message.usageMetadata) {
-    let inputTextTokens = 0;
-    let inputAudioTokens = 0;
-    let outputTextTokens = 0;
-    let outputAudioTokens = 0;
-
-    for (const value of message.usageMetadata.promptTokensDetails ?? []) {
-      if (value.modality === (Modality.TEXT as unknown as MediaModality)) {
-        inputTextTokens += value.tokenCount ?? 0;
-      } else if (
-        value.modality === (Modality.AUDIO as unknown as MediaModality)
-      ) {
-        inputAudioTokens += value.tokenCount ?? 0;
-      }
-    }
-    for (const value of message.usageMetadata.responseTokensDetails ?? []) {
-      if (value.modality === (Modality.TEXT as unknown as MediaModality)) {
-        outputTextTokens += value.tokenCount ?? 0;
-      } else if (
-        value.modality === (Modality.AUDIO as unknown as MediaModality)
-      ) {
-        outputAudioTokens += value.tokenCount ?? 0;
-      }
-    }
-
-    const usage: TokensUsageType = {
-      input: {
-        audioTokens: inputAudioTokens,
-        textTokens: inputTextTokens,
-      },
-      output: {
-        audioTokens: outputAudioTokens,
-        textTokens: outputTextTokens,
-      },
-    };
-    console.log("Tokens usage:", usage);
-
-    onUsageReporting?.(usage);
-  }
-};
-
 const combineResponseQueueToBase64Pcm = ({
   responseQueue,
 }: {
@@ -262,5 +209,4 @@ const combineResponseQueueToBase64Pcm = ({
 };
 
 export { useGeminiNativeAudio };
-
 export type { TokensUsageType };

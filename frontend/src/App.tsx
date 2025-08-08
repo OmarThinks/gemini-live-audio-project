@@ -1,7 +1,11 @@
 import { Modality } from "@google/genai/web";
 import { useCallback, useRef, useState } from "react";
 import { base64Text } from "./base64Text";
-import { useGeminiNativeAudio } from "./hooks/useGeminiNativeAudio";
+import {
+  useGeminiNativeAudio,
+  type TokensUsageType,
+} from "./hooks/useGeminiNativeAudio";
+import type { MediaModality, UsageMetadata } from "@google/genai";
 
 //console.log("Google API Key:", import.meta.env.VITE_GOOGLE_API_KEY);
 
@@ -25,7 +29,8 @@ const App = () => {
     systemInstruction:
       "You are a helpful assistant and answer in a friendly tone.",
     onUsageReporting: (usage) => {
-      console.log("New Usage Report:", usage);
+      const tokensUsage = reportIfTokensUsage({ usageMetadata: usage });
+      console.log("New Usage Report:", tokensUsage);
     },
     onAiResponseCompleted(base64Audio) {
       console.log(base64Audio);
@@ -326,5 +331,48 @@ function base64ToAudioBuffer(
   audioBuffer.getChannelData(0).set(float32);
   return audioBuffer;
 }
+
+const reportIfTokensUsage = ({
+  usageMetadata,
+}: {
+  usageMetadata: UsageMetadata;
+}): TokensUsageType => {
+  let inputTextTokens = 0;
+  let inputAudioTokens = 0;
+  let outputTextTokens = 0;
+  let outputAudioTokens = 0;
+
+  for (const value of usageMetadata.promptTokensDetails ?? []) {
+    if (value.modality === (Modality.TEXT as unknown as MediaModality)) {
+      inputTextTokens += value.tokenCount ?? 0;
+    } else if (
+      value.modality === (Modality.AUDIO as unknown as MediaModality)
+    ) {
+      inputAudioTokens += value.tokenCount ?? 0;
+    }
+  }
+  for (const value of usageMetadata.responseTokensDetails ?? []) {
+    if (value.modality === (Modality.TEXT as unknown as MediaModality)) {
+      outputTextTokens += value.tokenCount ?? 0;
+    } else if (
+      value.modality === (Modality.AUDIO as unknown as MediaModality)
+    ) {
+      outputAudioTokens += value.tokenCount ?? 0;
+    }
+  }
+
+  const usage: TokensUsageType = {
+    input: {
+      audioTokens: inputAudioTokens,
+      textTokens: inputTextTokens,
+    },
+    output: {
+      audioTokens: outputAudioTokens,
+      textTokens: outputTextTokens,
+    },
+  };
+
+  return usage;
+};
 
 export default App;
