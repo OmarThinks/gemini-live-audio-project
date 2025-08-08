@@ -7,37 +7,8 @@ import {
 } from "@google/genai/web";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Buffer } from "buffer";
-import { base64Text } from "../base64Text";
 
 const model = "gemini-2.5-flash-preview-native-audio-dialog";
-
-/*
-async function playRawPCM(int16Array: Int16Array, sampleRate = 24000) {
-  const audioContext = new AudioContext({ sampleRate });
-
-  // Convert Int16Array to Float32Array (Web Audio API uses Float32)
-  const float32Array = new Float32Array(int16Array.length);
-  for (let i = 0; i < int16Array.length; i++) {
-    float32Array[i] = int16Array[i] / 32768; // normalize from [-32768, 32767] to [-1, 1]
-  }
-
-  // Create AudioBuffer
-  const audioBuffer = audioContext.createBuffer(
-    1, // 1 channel (mono)
-    float32Array.length,
-    sampleRate
-  );
-
-  audioBuffer.getChannelData(0).set(float32Array);
-
-  // Create buffer source and connect it
-  const source = audioContext.createBufferSource();
-  source.buffer = audioBuffer;
-  source.connect(audioContext.destination);
-
-  // Start playback
-  source.start();
-}*/
 
 const useGeminiNativeAudio = ({
   apiKey,
@@ -63,6 +34,7 @@ const useGeminiNativeAudio = ({
   onUserInterruption: () => void;
 }) => {
   const innerResponseQueue = useRef<Part[]>([]);
+  const [responseQueue, setResponseQueue] = useState<Part[]>([]);
 
   const session = useRef<Session | null>(null);
   const [messages, setMessages] = useState<string[]>([]);
@@ -97,6 +69,11 @@ const useGeminiNativeAudio = ({
               responseQueue: innerResponseQueue.current,
             });
             onAiResponseCompleted?.(combinedBase64);
+            console.log(
+              "AI Turn completed, base64 audio:",
+              responseQueue,
+              combinedBase64
+            );
           }
           if (message?.serverContent?.modelTurn?.parts) {
             const parts: Part[] =
@@ -105,17 +82,18 @@ const useGeminiNativeAudio = ({
               ) ?? [];
 
             if (parts.length > 0) {
-              //console.log("Parts:", parts);
-              //console.log("Part inline data:", parts[0].inlineData);
-              //setResponseQueue((prev) => [...prev, ...parts]);
               onResponseChunks?.(parts);
+              setResponseQueue((prev) => [...prev, ...parts]);
               innerResponseQueue.current = [
                 ...innerResponseQueue.current,
                 ...parts,
               ];
             }
-
-            //const parts: Part[] = []
+          }
+          if (message?.serverContent?.interrupted) {
+            onUserInterruption();
+            setResponseQueue([]);
+            innerResponseQueue.current = [];
           }
         },
         onerror: function (e) {
@@ -147,7 +125,9 @@ const useGeminiNativeAudio = ({
     onUsageReporting,
     onReceivingMessage,
     onAiResponseCompleted,
+    responseQueue,
     onResponseChunks,
+    onUserInterruption,
     onSocketError,
     onSocketClose,
   ]);
@@ -185,6 +165,7 @@ const useGeminiNativeAudio = ({
     session,
     sendRealtimeInput,
     messages,
+    responseQueue,
   };
 };
 
@@ -246,11 +227,6 @@ const recordTokensUsage = ({
     onUsageReporting?.(usage);
   }
 };
-
-/**
- * This function tries to read the server status from the message.
- * It returns the status if it can determine it, otherwise returns undefined.
- */
 
 const combineResponseQueueToBase64Pcm = ({
   responseQueue,

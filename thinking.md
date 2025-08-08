@@ -6,7 +6,7 @@
 - rename functions: `onResponseChunk`, `onUserInterruption`
 - redo the whole thing of recording audio and sending it
 - enable two modes, immediate response, or onResponseComplete
-- remove the server status things
+- remove the server status things ✅
 
 # Hey
 

@@ -1,4 +1,3 @@
-import type { Part } from "@google/genai";
 import { Modality } from "@google/genai/web";
 import { useCallback, useRef, useState } from "react";
 import { dummyBase64Audio } from "./base64Audio.dummy";
@@ -13,9 +12,6 @@ import {
 //console.log("Google API Key:", import.meta.env.VITE_GOOGLE_API_KEY);
 
 const App = () => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [responseQueue, setResponseQueue] = useState<Part[]>([]);
-
   const [recording, setRecording] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -23,23 +19,14 @@ const App = () => {
 
   const audioContextRef = useRef<AudioContext | null>(null);
 
-  const enqueueResponseQueue = useCallback((part: Part) => {
-    setResponseQueue((prev) => [...prev, part]);
-  }, []);
-  const clearResponseQueue = useCallback(() => {
-    setResponseQueue([]);
-    audioContextRef.current?.suspend();
-    audioContextRef.current = null;
-  }, []);
-
   const {
     connectSocket,
     disconnectSocket,
     isConnected,
-    serverStatus,
     session,
     sendRealtimeInput,
     messages,
+    responseQueue,
   } = useGeminiNativeAudio({
     apiKey: import.meta.env.VITE_GOOGLE_API_KEY,
     responseModalities: [Modality.AUDIO],
@@ -70,8 +57,9 @@ const App = () => {
         console.error("Playback error:", err);
       }
     },
-    onResponseChunk: enqueueResponseQueue,
-    onUserInterruption: clearResponseQueue,
+    onUserInterruption: () => {
+      // TODO: make the audio stop speaking
+    },
   });
 
   const [recordedPCM, setRecordedPCM] = useState<string>("");
@@ -89,7 +77,7 @@ const App = () => {
         console.log("Audio chunk available:", event.data);
       }
     };*/
-    const audioContext = new AudioContext(); // default sampleRate, often 44100 or 48000
+    //const audioContext = new AudioContext(); // default sampleRate, often 44100 or 48000
 
     mediaRecorder.ondataavailable = async (event) => {
       if (event.data.size > 0) {
