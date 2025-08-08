@@ -145,18 +145,15 @@ const useGeminiNativeAudio = ({
   //console.log("messages", messages);
   //console.log("responseQueue", responseQueue);
 
-  const sendRealtimeInput = useCallback(
-    async (message: string) => {
-      onUserInterruption();
-      session.current?.sendRealtimeInput?.({
-        audio: {
-          data: message,
-          mimeType: "audio/pcm;rate=16000",
-        },
-      });
-    },
-    [onUserInterruption]
-  );
+  const sendRealtimeInput = useCallback(async (message: string) => {
+    console.log("Sending realtime input:", message);
+    session.current?.sendRealtimeInput?.({
+      audio: {
+        data: message,
+        mimeType: "audio/pcm;rate=16000",
+      },
+    });
+  }, []);
 
   return {
     isConnected,

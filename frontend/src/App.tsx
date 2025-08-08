@@ -19,8 +19,6 @@ const App = () => {
 
   const audioContextRef = useRef<AudioContext | null>(null);
 
-  const [waitFullResponse, setWaitFullResponse] = useState(false);
-
   const {
     connectSocket,
     disconnectSocket,
@@ -81,7 +79,7 @@ const App = () => {
     };*/
     //const audioContext = new AudioContext(); // default sampleRate, often 44100 or 48000
 
-    mediaRecorder.ondataavailable = async (event) => {
+    /*mediaRecorder.ondataavailable = async (event) => {
       if (event.data.size > 0) {
         audioChunks.current.push(event.data);
 
@@ -110,6 +108,29 @@ const App = () => {
         const base64String = pcmToBase64(int16);
 
         console.log("PCM 24000Hz:", base64String);
+        setRecordedPCM(base64String);
+      }
+    };*/
+
+    mediaRecorder.ondataavailable = async (event) => {
+      const audioChunks = [];
+
+      if (event.data.size > 0) {
+        audioChunks.push(event.data);
+
+        const blob = new Blob(audioChunks, { type: "audio/webm" });
+        const arrayBuffer = await blob.arrayBuffer();
+
+        const audioContext = new AudioContext(); // default 48000 Hz
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+        // ✅ Resample to 16000 Hz PCM
+        const resampledBuffer = await resampleAudioBuffer(audioBuffer, 16000);
+        const pcmData = convertToPCM16(resampledBuffer);
+
+        const base64String = arrayBufferToBase64(pcmData.buffer);
+
+        console.log("data:audio/pcm;rate=16000;base64," + base64String);
         setRecordedPCM(base64String);
       }
     };
@@ -167,18 +188,6 @@ const App = () => {
     <div style={{ padding: "20px" }}>
       <h1>WebSocket Test</h1>
       <p>Status: {isConnected ? "Connected" : "Disconnected"}</p>
-
-      <div className="flex items-center gap-10 flex-row">
-        <input
-          type="checkbox"
-          onChange={(e) => {
-            setWaitFullResponse(e.currentTarget.checked);
-          }}
-        />
-        <span className="ml-3">
-          Wait for full response before displaying the audio
-        </span>
-      </div>
 
       {isConnected ? (
         <div className=" gap-3 flex flex-col">
@@ -317,9 +326,94 @@ const App = () => {
       >
         Send
       </button>
+      <div>
+        <button
+          onClick={() => {
+            playPCMBase64(base64Text);
+          }}
+        >
+          Play Ping Voice
+        </button>
+      </div>
+      <div>
+        <button
+          onClick={() => {
+            playPCMBase64(recordedPCM);
+          }}
+        >
+          Play Recorded PCM
+        </button>
+      </div>
     </div>
   );
 };
+
+function playPCMBase64(base64String: string) {
+  const sampleRate = 16000;
+
+  // Convert base64 to ArrayBuffer
+  const binaryString = atob(base64String);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+
+  // Convert to Int16Array
+  const pcm16 = new Int16Array(bytes.buffer);
+
+  // Convert to Float32Array (range -1.0 to 1.0)
+  const float32 = new Float32Array(pcm16.length);
+  for (let i = 0; i < pcm16.length; i++) {
+    float32[i] = pcm16[i] / 32768; // normalize
+  }
+
+  // Use Web Audio API to play
+  const context = new AudioContext({ sampleRate });
+  const buffer = context.createBuffer(1, float32.length, sampleRate);
+  buffer.copyToChannel(float32, 0);
+
+  const source = context.createBufferSource();
+  source.buffer = buffer;
+  source.connect(context.destination);
+  source.start();
+}
+
+// Helper: Resample AudioBuffer to 16000 Hz
+async function resampleAudioBuffer(audioBuffer, targetSampleRate) {
+  const offlineCtx = new OfflineAudioContext(
+    audioBuffer.numberOfChannels,
+    audioBuffer.duration * targetSampleRate,
+    targetSampleRate
+  );
+  const source = offlineCtx.createBufferSource();
+  source.buffer = audioBuffer;
+  source.connect(offlineCtx.destination);
+  source.start();
+  const resampled = await offlineCtx.startRendering();
+  return resampled;
+}
+
+// Helper: Convert AudioBuffer to Int16 PCM
+function convertToPCM16(audioBuffer) {
+  const channelData = audioBuffer.getChannelData(0); // mono
+  const pcm16 = new Int16Array(channelData.length);
+  for (let i = 0; i < channelData.length; i++) {
+    let s = Math.max(-1, Math.min(1, channelData[i]));
+    pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  }
+  return pcm16;
+}
+
+// Helper: Convert ArrayBuffer to Base64
+function arrayBufferToBase64(buffer) {
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
 
 const AudioRecorder = ({
   recording,
