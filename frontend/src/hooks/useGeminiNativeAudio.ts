@@ -17,6 +17,8 @@ const useGeminiNativeAudio = ({
   onAiResponseCompleted,
   onResponseChunks,
   onUserInterruption,
+  targetTokens,
+  voiceName = AvailableVoices[0].voiceName,
 }: {
   apiKey: string;
   responseModalities?: Modality[];
@@ -27,7 +29,9 @@ const useGeminiNativeAudio = ({
   onSocketClose?: (reason: unknown) => void;
   onAiResponseCompleted?: (base64Audio: string) => void;
   onResponseChunks?: (part: Part[]) => void;
-  onUserInterruption: () => void;
+  onUserInterruption?: () => void;
+  targetTokens?: number;
+  voiceName?: string; // Optional voice name, default to first available voice
 }) => {
   const innerResponseQueue = useRef<Part[]>([]);
   const [responseQueue, setResponseQueue] = useState<Part[]>([]);
@@ -35,6 +39,8 @@ const useGeminiNativeAudio = ({
   const session = useRef<Session | null>(null);
   const [messages, setMessages] = useState<string[]>([]);
   const isConnected = !!session?.current;
+
+  const _targetTokens = targetTokens ? `${targetTokens}` : undefined; // Default to 12800 if not provided
 
   const ai = useMemo(() => {
     return new GoogleGenAI({
@@ -86,7 +92,7 @@ const useGeminiNativeAudio = ({
             }
           }
           if (message?.serverContent?.interrupted) {
-            onUserInterruption();
+            onUserInterruption?.();
             setResponseQueue([]);
             innerResponseQueue.current = [];
           }
@@ -110,13 +116,12 @@ const useGeminiNativeAudio = ({
         speechConfig: {
           voiceConfig: {
             prebuiltVoiceConfig: {
-              voiceName: "Zephyr",
+              voiceName: AvailableVoices[0].voiceName,
             },
           },
         },
         contextWindowCompression: {
-          triggerTokens: "25600",
-          slidingWindow: { targetTokens: "12800" },
+          slidingWindow: { targetTokens: _targetTokens },
         },
       },
     });
@@ -126,10 +131,11 @@ const useGeminiNativeAudio = ({
     session.current = _session;
   }, [
     ai.live,
-    responseModalities,
     systemInstruction,
-    onUsageReporting,
+    responseModalities,
+    _targetTokens,
     onReceivingMessage,
+    onUsageReporting,
     onAiResponseCompleted,
     responseQueue,
     onResponseChunks,
@@ -219,5 +225,70 @@ const combineResponseQueueToBase64Pcm = ({
   return combinedBase64;
 };
 
-export { useGeminiNativeAudio };
-export type { TokensUsageType };
+const AvailableVoices = [
+  { voiceName: "Zephyr", description: "Bright" },
+  { voiceName: "Puck", description: "Upbeat" },
+  { voiceName: "Charon", description: "Informative" },
+  { voiceName: "Kore", description: "Firm" },
+  { voiceName: "Fenrir", description: "Excitable" },
+  { voiceName: "Leda", description: "Youthful" },
+  { voiceName: "Orus", description: "Firm" },
+  { voiceName: "Aoede", description: "Breezy" },
+  { voiceName: "Callirrhoe", description: "Easy-going" },
+  { voiceName: "Autonoe", description: "Bright" },
+  { voiceName: "Enceladus", description: "Breathy" },
+  { voiceName: "Iapetus", description: "Clear" },
+  { voiceName: "Umbriel", description: "Easy-going" },
+  { voiceName: "Algieba", description: "Smooth" },
+  { voiceName: "Despina", description: "Smooth" },
+  { voiceName: "Erinome", description: "Clear" },
+  { voiceName: "Algenib", description: "Gravelly" },
+  { voiceName: "Rasalgethi", description: "Informative" },
+  { voiceName: "Laomedeia", description: "Upbeat" },
+  { voiceName: "Achernar", description: "Soft" },
+  { voiceName: "Alnilam", description: "Firm" },
+  { voiceName: "Schedar", description: "Even" },
+  { voiceName: "Gacrux", description: "Mature" },
+  { voiceName: "Pulcherrima", description: "Forward" },
+  { voiceName: "Achird", description: "Friendly" },
+  { voiceName: "Zubenelgenubi", description: "Casual" },
+  { voiceName: "Vindemiatrix", description: "Gentle" },
+  { voiceName: "Sadachbia", description: "Lively" },
+  { voiceName: "Sadaltager", description: "Knowledgeable" },
+  { voiceName: "Sulafat", description: "Warm" },
+];
+
+type VoiceNameType =
+  | "Zephyr"
+  | "Puck"
+  | "Charon"
+  | "Kore"
+  | "Fenrir"
+  | "Leda"
+  | "Orus"
+  | "Aoede"
+  | "Callirrhoe"
+  | "Autonoe"
+  | "Enceladus"
+  | "Iapetus"
+  | "Umbriel"
+  | "Algieba"
+  | "Despina"
+  | "Erinome"
+  | "Algenib"
+  | "Rasalgethi"
+  | "Laomedeia"
+  | "Achernar"
+  | "Alnilam"
+  | "Schedar"
+  | "Gacrux"
+  | "Pulcherrima"
+  | "Achird"
+  | "Zubenelgenubi"
+  | "Vindemiatrix"
+  | "Sadachbia"
+  | "Sadaltager"
+  | "Sulafat";
+
+export { useGeminiNativeAudio, AvailableVoices };
+export type { TokensUsageType, VoiceNameType };
