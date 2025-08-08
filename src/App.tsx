@@ -1,14 +1,13 @@
+import type { MediaModality, UsageMetadata } from "@google/genai";
 import { Modality } from "@google/genai/web";
 import { useCallback, useRef, useState } from "react";
 import { base64Text } from "./base64Text";
 import {
-  useGeminiNativeAudio,
   AvailableVoices,
+  useGeminiNativeAudio,
   type TokensUsageType,
   type VoiceNameType,
 } from "./hooks/useGeminiNativeAudio";
-import type { MediaModality, UsageMetadata } from "@google/genai";
-import {} from "./hooks/useGeminiNativeAudio";
 
 //console.log("Google API Key:", import.meta.env.VITE_GOOGLE_API_KEY);
 
