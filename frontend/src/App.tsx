@@ -3,9 +3,12 @@ import { useCallback, useRef, useState } from "react";
 import { base64Text } from "./base64Text";
 import {
   useGeminiNativeAudio,
+  AvailableVoices,
   type TokensUsageType,
+  type VoiceNameType,
 } from "./hooks/useGeminiNativeAudio";
 import type { MediaModality, UsageMetadata } from "@google/genai";
+import {} from "./hooks/useGeminiNativeAudio";
 
 //console.log("Google API Key:", import.meta.env.VITE_GOOGLE_API_KEY);
 
@@ -14,6 +17,10 @@ const App = () => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
   const audioContextRef = useRef<AudioContext | null>(null);
+
+  const [selectedVoice, setSelectedVoice] = useState<VoiceNameType>(
+    AvailableVoices[0].voiceName
+  );
 
   const {
     connectSocket,
@@ -25,6 +32,7 @@ const App = () => {
     responseQueue,
   } = useGeminiNativeAudio({
     apiKey: import.meta.env.VITE_GOOGLE_API_KEY,
+    voiceName: selectedVoice,
     responseModalities: [Modality.AUDIO],
     systemInstruction:
       "You are a helpful assistant and answer in a friendly tone.",
@@ -118,6 +126,26 @@ const App = () => {
       ) : (
         <button onClick={connectSocket}>Connect</button>
       )}
+
+      <div>
+        <label htmlFor="voiceSelect">Select Voice:</label>
+        <select
+          id="voiceSelect"
+          value={selectedVoice}
+          onChange={(e) => setSelectedVoice(e.target.value as VoiceNameType)}
+        >
+          {AvailableVoices.map((voice) => (
+            <option key={voice.voiceName} value={voice.voiceName}>
+              {`${voice.voiceName} -- ${voice.description}`}
+            </option>
+          ))}
+        </select>
+        <div>
+          <h4>Selected Voice:</h4>
+          <p>{selectedVoice}</p>
+        </div>
+      </div>
+
       <div style={{ marginTop: "20px" }}>
         <h3>Messages:</h3>
         {messages.map((message, index) => (

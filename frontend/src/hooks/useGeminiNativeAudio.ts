@@ -116,7 +116,7 @@ const useGeminiNativeAudio = ({
         speechConfig: {
           voiceConfig: {
             prebuiltVoiceConfig: {
-              voiceName: AvailableVoices[0].voiceName,
+              voiceName,
             },
           },
         },
@@ -133,6 +133,7 @@ const useGeminiNativeAudio = ({
     ai.live,
     systemInstruction,
     responseModalities,
+    voiceName,
     _targetTokens,
     onReceivingMessage,
     onUsageReporting,
@@ -225,7 +226,10 @@ const combineResponseQueueToBase64Pcm = ({
   return combinedBase64;
 };
 
-const AvailableVoices = [
+const AvailableVoices: {
+  voiceName: VoiceNameType;
+  description: string;
+}[] = [
   { voiceName: "Zephyr", description: "Bright" },
   { voiceName: "Puck", description: "Upbeat" },
   { voiceName: "Charon", description: "Informative" },
