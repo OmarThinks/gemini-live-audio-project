@@ -105,8 +105,19 @@ const useGeminiNativeAudio = ({
         },
       },
       config: {
+        systemInstruction,
         responseModalities: responseModalities,
-        systemInstruction: systemInstruction,
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: {
+              voiceName: "Zephyr",
+            },
+          },
+        },
+        contextWindowCompression: {
+          triggerTokens: "25600",
+          slidingWindow: { targetTokens: "12800" },
+        },
       },
     });
 
