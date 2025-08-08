@@ -1,4 +1,8 @@
-import type { MediaModality, UsageMetadata } from "@google/genai";
+import type {
+  LiveServerMessage,
+  MediaModality,
+  UsageMetadata,
+} from "@google/genai";
 import { Modality } from "@google/genai/web";
 import { useCallback, useRef, useState } from "react";
 import { base64Text } from "./base64Text";
@@ -15,6 +19,8 @@ const App = () => {
   const [recording, setRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
+  const [messages, setMessages] = useState<LiveServerMessage[]>([]);
+
   const audioContextRef = useRef<AudioContext | null>(null);
 
   const [selectedVoice, setSelectedVoice] = useState<VoiceNameType>(
@@ -27,7 +33,6 @@ const App = () => {
     isConnected,
     session,
     sendRealtimeInput,
-    messages,
     responseQueue,
   } = useGeminiNativeAudio({
     apiKey: import.meta.env.VITE_GOOGLE_API_KEY,
@@ -63,6 +68,9 @@ const App = () => {
     },
     onUserInterruption: () => {
       audioContextRef.current = null;
+    },
+    onReceivingMessage: (message) => {
+      setMessages((prev) => [...prev, message]);
     },
   });
 
@@ -148,7 +156,7 @@ const App = () => {
       <div style={{ marginTop: "20px" }}>
         <h3>Messages:</h3>
         {messages.map((message, index) => (
-          <p key={index}>{message}</p>
+          <p key={index}>{JSON.stringify(message)}</p>
         ))}
       </div>
       <button

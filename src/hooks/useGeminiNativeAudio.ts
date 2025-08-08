@@ -37,7 +37,6 @@ const useGeminiNativeAudio = ({
   const [responseQueue, setResponseQueue] = useState<Part[]>([]);
 
   const session = useRef<Session | null>(null);
-  const [messages, setMessages] = useState<string[]>([]);
   const isConnected = !!session?.current;
 
   const _targetTokens = targetTokens ? `${targetTokens}` : undefined; // Default to 12800 if not provided
@@ -56,10 +55,8 @@ const useGeminiNativeAudio = ({
       callbacks: {
         onopen: function () {
           console.debug("Opened");
-          setMessages((prev) => [...prev, "Connected to Google GenAI"]);
         },
         onmessage: function (message) {
-          setMessages((prev) => [...prev, `Message received: ${message.data}`]);
           if (message.usageMetadata) {
             onUsageReporting?.(message.usageMetadata);
           }
@@ -99,13 +96,11 @@ const useGeminiNativeAudio = ({
         },
         onerror: function (e) {
           console.debug("Error:", e.message);
-          setMessages((prev) => [...prev, `Error: ${e.message}`]);
           onSocketError?.(e);
         },
         onclose: function (e) {
           console.debug("Close:", e.reason);
           console.log("Session closed:", e);
-          setMessages((prev) => [...prev, `Disconnected: ${e.reason}`]);
           session.current = null;
           onSocketClose?.(e);
         },
@@ -155,7 +150,6 @@ const useGeminiNativeAudio = ({
       session?.current?.close?.();
     };
   }, []);
-  //console.log("messages", messages);
   //console.log("responseQueue", responseQueue);
 
   const sendRealtimeInput = useCallback(async (message: string) => {
@@ -174,7 +168,6 @@ const useGeminiNativeAudio = ({
     disconnectSocket,
     session,
     sendRealtimeInput,
-    messages,
     responseQueue,
   };
 };
