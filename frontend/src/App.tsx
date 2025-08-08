@@ -134,6 +134,7 @@ const App = () => {
       }
     };*/
 
+    /*
     mediaRecorder.onstop = () => {
       const audioBlob = new Blob(audioChunks.current, { type: "audio/webm" });
       const url = URL.createObjectURL(audioBlob);
@@ -146,7 +147,7 @@ const App = () => {
         console.log("Base64 Audio:", base64); // Do something with it
       };
       reader.readAsDataURL(audioBlob);
-    };
+    };*/
 
     setRecordedPCM("");
     mediaRecorder.start();
