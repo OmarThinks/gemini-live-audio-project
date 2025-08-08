@@ -74,7 +74,7 @@ const App = () => {
     clearResponseQueue,
   });
 
-  const [recordedPCMs, setRecordedPCMs] = useState<string[]>([]);
+  const [recordedPCM, setRecordedPCM] = useState<string>("");
 
   const startRecording = useCallback(async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -120,7 +120,7 @@ const App = () => {
         const base64String = pcmToBase64(int16);
 
         console.log("PCM 24000Hz:", base64String);
-        setRecordedPCMs((prev) => [...prev, base64String]);
+        setRecordedPCM(base64String);
       }
     };
 
@@ -158,7 +158,7 @@ const App = () => {
       reader.readAsDataURL(audioBlob);
     };
 
-    setRecordedPCMs([]);
+    setRecordedPCM("");
     mediaRecorder.start();
     setRecording(true);
   }, []);
@@ -274,8 +274,8 @@ const App = () => {
       </button>
       <button
         onClick={() => {
-          if (recordedPCMs.length === 0) {
-            console.warn("No recorded PCMs to play");
+          if (recordedPCM.length === 0) {
+            console.warn("No recorded PCM to play");
             return;
           }
 
@@ -284,9 +284,9 @@ const App = () => {
 
             const audioContext = new AudioContext({ sampleRate: 24000 });
 
-            const base64Audio = recordedPCMs[index];
+            const base64Audio = recordedPCM;
             if (!base64Audio) {
-              console.warn("No more recorded PCMs to play");
+              console.warn("No recorded PCM to play");
               return;
             }
 
@@ -295,15 +295,23 @@ const App = () => {
             source.buffer = audioBuffer;
             source.connect(audioContext.destination);
             source.start(0);
-            source.onended = () => {
-              playNext(index + 1);
-            };
           };
 
           playNext();
         }}
       >
-        Play Recorded PCMs
+        Play Recorded PCM
+      </button>
+      <button
+        onClick={() => {
+          if (recordedPCM.length === 0) {
+            console.warn("No recorded PCM to send");
+            return;
+          }
+          sendRealtimeInput(recordedPCM);
+        }}
+      >
+        Send
       </button>
     </div>
   );

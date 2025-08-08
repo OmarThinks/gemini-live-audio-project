@@ -237,6 +237,7 @@ const useGeminiNativeAudio = ({
     setServerStatus,
     onUsageReporting,
     onReceivingMessage,
+    enqueueResponseQueue,
     onSocketError,
     onSocketClose,
   ]);
@@ -254,16 +255,19 @@ const useGeminiNativeAudio = ({
   //console.log("messages", messages);
   //console.log("responseQueue", responseQueue);
 
-  const sendRealtimeInput = useCallback(async (message: string) => {
-    clearResponseQueue();
-    innerResponseQueue.current = [];
-    session.current?.sendRealtimeInput?.({
-      audio: {
-        data: message,
-        mimeType: "audio/pcm;rate=16000",
-      },
-    });
-  }, []);
+  const sendRealtimeInput = useCallback(
+    async (message: string) => {
+      clearResponseQueue();
+      innerResponseQueue.current = [];
+      session.current?.sendRealtimeInput?.({
+        audio: {
+          data: message,
+          mimeType: "audio/pcm;rate=16000",
+        },
+      });
+    },
+    [clearResponseQueue]
+  );
 
   return {
     isConnected,
