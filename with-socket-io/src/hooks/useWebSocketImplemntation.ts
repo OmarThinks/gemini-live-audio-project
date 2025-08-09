@@ -5,8 +5,14 @@ const useWebSocketImplementation = () => {
   const [isConnected, setIsConnected] = useState(false);
 
   const connectWebSocket = useCallback(() => {
+    if (socketRef.current?.readyState) {
+      console.warn("WebSocket is already connected");
+      return;
+    }
+    const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
+
     const ws = new WebSocket(
-      "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
+      `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`
     );
     socketRef.current = ws;
     socketRef.current.onopen = () => {
@@ -30,18 +36,24 @@ const useWebSocketImplementation = () => {
     };
   }, []);
 
-  const disconnect = useCallback(() => {
+  const disconnectWebSocket = useCallback(() => {
     socketRef.current?.close();
     socketRef.current = null;
   }, []);
 
   useEffect(() => {
     return () => {
-      disconnect();
+      disconnectWebSocket();
     };
-  }, [connectWebSocket, disconnect]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  return { socket: socketRef.current, isConnected };
+  return {
+    socket: socketRef.current,
+    isConnected,
+    connectWebSocket,
+    disconnectWebSocket,
+  };
 };
 
 export { useWebSocketImplementation };

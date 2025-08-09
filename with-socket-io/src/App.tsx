@@ -3,7 +3,20 @@ import { useWebSocketImplementation } from "./hooks/useWebSocketImplemntation";
 //console.log("Google API Key:", import.meta.env.VITE_GOOGLE_API_KEY);
 
 const App = () => {
-  return <div>App</div>;
+  const { connectWebSocket, disconnectWebSocket, isConnected } =
+    useWebSocketImplementation();
+
+  return (
+    <div>
+      {isConnected ? (
+        <button onClick={disconnectWebSocket}>Disconnect WebSocket</button>
+      ) : (
+        <button onClick={connectWebSocket}> Connect WebSocket</button>
+      )}
+
+      <p>Status: {isConnected ? "Connected" : "Disconnected"}</p>
+    </div>
+  );
 };
 
 /*
