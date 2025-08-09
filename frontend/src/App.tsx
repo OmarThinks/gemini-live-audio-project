@@ -9,7 +9,6 @@ import { base64Text } from "./base64Text";
 import {
   AvailableVoices,
   useGeminiNativeAudio,
-  type TokensUsageType,
   type VoiceNameType,
 } from "./hooks/useGeminiNativeAudio";
 
@@ -408,6 +407,17 @@ const reportIfTokensUsage = ({
   };
 
   return usage;
+};
+
+type TokensUsageType = {
+  input: {
+    textTokens: number;
+    audioTokens: number;
+  };
+  output: {
+    textTokens: number;
+    audioTokens: number;
+  };
 };
 
 export default App;
