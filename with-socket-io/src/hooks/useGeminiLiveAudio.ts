@@ -11,7 +11,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const model = "models/gemini-2.5-flash-preview-native-audio-dialog";
 
-const useWebSocketImplementation = ({
+const useGeminiLiveAudio = ({
   apiKey,
   responseModalities = [Modality.AUDIO],
   systemInstruction,
@@ -331,5 +331,5 @@ type VoiceNameType =
   | "Sadaltager"
   | "Sulafat";
 
-export { AvailableVoices, useWebSocketImplementation };
+export { AvailableVoices, useGeminiLiveAudio };
 export type { VoiceNameType };
