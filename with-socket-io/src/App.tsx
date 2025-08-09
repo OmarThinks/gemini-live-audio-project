@@ -42,7 +42,7 @@ const App = () => {
       const tokensUsage = reportIfTokensUsage({ usageMetadata: usage });
       console.log("New Usage Report:", tokensUsage);
     },
-    onAiResponseCompleted(base64Audio) {
+    onAiResponseCompleted({ base64Audio, responseQueue }) {
       console.log("response completed", base64Audio);
 
       if (!(base64Audio && typeof base64Audio === "string")) {
@@ -115,6 +115,17 @@ const App = () => {
   return (
     <div style={{ padding: "20px" }}>
       <h1>Google Gemini Live Audio</h1>
+
+      <h2
+        style={{
+          color: "lime",
+        }}
+      >
+        IMPORTANT: Before stopping recording, please stay silent for a while, so
+        that gemini can understand that your turn is over, and now it's his turn
+        to respond
+      </h2>
+
       <p>Status: {isConnected ? "Connected" : "Disconnected"}</p>
 
       {isConnected ? (
@@ -217,17 +228,19 @@ const App = () => {
       >
         Play Recorded PCM
       </button>
-      <button
-        onClick={() => {
-          if (recordedPCM.length === 0) {
-            console.warn("No recorded PCM to send");
-            return;
-          }
-          sendRealtimeInput(recordedPCM);
-        }}
-      >
-        Send
-      </button>
+      {isConnected && (
+        <button
+          onClick={() => {
+            if (recordedPCM.length === 0) {
+              console.warn("No recorded PCM to send");
+              return;
+            }
+            sendRealtimeInput(recordedPCM);
+          }}
+        >
+          Send
+        </button>
+      )}
       <div>
         <button
           onClick={() => {

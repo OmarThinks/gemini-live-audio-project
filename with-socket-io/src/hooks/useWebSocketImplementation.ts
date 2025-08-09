@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Modality,
   type LiveClientMessage,
@@ -8,6 +7,7 @@ import {
   type UsageMetadata,
 } from "@google/genai";
 import { Buffer } from "buffer";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const model = "models/gemini-2.5-flash-preview-native-audio-dialog";
 
@@ -33,7 +33,13 @@ const useWebSocketImplementation = ({
   onReceivingMessage?: (message: LiveServerMessage) => void;
   onSocketError?: (error: unknown) => void;
   onSocketClose?: (reason: unknown) => void;
-  onAiResponseCompleted?: (base64Audio: string) => void;
+  onAiResponseCompleted?: ({
+    base64Audio,
+    responseQueue,
+  }: {
+    base64Audio: string;
+    responseQueue: Part[];
+  }) => void;
   onResponseChunks?: (part: Part[]) => void;
   onUserInterruption?: () => void;
   targetTokens?: number;
@@ -94,13 +100,18 @@ const useWebSocketImplementation = ({
         const combinedBase64 = combineResponseQueueToBase64Pcm({
           responseQueue: innerResponseQueue.current,
         });
-        onAiResponseCompleted?.(combinedBase64);
+        onAiResponseCompleted?.({
+          base64Audio: combinedBase64,
+          responseQueue: innerResponseQueue.current,
+        });
         console.log(
           "AI Turn completed, base64 audio:",
           responseQueue,
           combinedBase64,
           innerResponseQueue.current
         );
+        setResponseQueue([]);
+        innerResponseQueue.current = [];
       }
       if (message?.serverContent?.modelTurn?.parts) {
         const parts: Part[] =
@@ -111,9 +122,7 @@ const useWebSocketImplementation = ({
         if (parts.length > 0) {
           onResponseChunks?.(parts);
 
-          const newResponseQueue = turnCompleteRef.current
-            ? [...parts]
-            : [...innerResponseQueue.current, ...parts];
+          const newResponseQueue = [...innerResponseQueue.current, ...parts];
           turnCompleteRef.current = false;
           setResponseQueue(newResponseQueue);
           innerResponseQueue.current = newResponseQueue;
@@ -203,12 +212,10 @@ const useWebSocketImplementation = ({
           },
         },
       };
-
       console.log("Sending message:", messageToSend);
-
-      socketRef.current.send(JSON.stringify(messageToSend));
+      sendMessage(messageToSend);
     },
-    [isConnected]
+    [isConnected, sendMessage]
   );
 
   return {
@@ -324,5 +331,5 @@ type VoiceNameType =
   | "Sadaltager"
   | "Sulafat";
 
-export { useWebSocketImplementation, AvailableVoices };
+export { AvailableVoices, useWebSocketImplementation };
 export type { VoiceNameType };
