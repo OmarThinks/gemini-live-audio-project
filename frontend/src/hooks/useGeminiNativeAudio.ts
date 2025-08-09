@@ -37,7 +37,7 @@ const useGeminiNativeAudio = ({
   const [responseQueue, setResponseQueue] = useState<Part[]>([]);
 
   const session = useRef<Session | null>(null);
-  const isConnected = !!session?.current;
+  const [isConnected, setIsConnected] = useState(false);
 
   const _targetTokens = targetTokens ? `${targetTokens}` : undefined;
 
@@ -55,6 +55,7 @@ const useGeminiNativeAudio = ({
       callbacks: {
         onopen: function () {
           console.debug("Opened");
+          setIsConnected(true);
         },
         onmessage: function (message) {
           if (message.usageMetadata) {
@@ -103,6 +104,7 @@ const useGeminiNativeAudio = ({
           console.log("Session closed:", e);
           session.current = null;
           onSocketClose?.(e);
+          setIsConnected(false);
         },
       },
       config: {
@@ -143,6 +145,7 @@ const useGeminiNativeAudio = ({
   const disconnectSocket = useCallback(() => {
     session?.current?.close?.();
     session.current = null;
+    setIsConnected(false);
   }, []);
 
   useEffect(() => {
