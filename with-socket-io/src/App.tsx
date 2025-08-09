@@ -8,10 +8,9 @@ import { useCallback, useRef, useState } from "react";
 import { base64Text } from "./base64Text";
 import {
   AvailableVoices,
-  useGeminiNativeAudio,
-  type TokensUsageType,
+  useWebSocketImplementation,
   type VoiceNameType,
-} from "./hooks/useGeminiNativeAudio";
+} from "./hooks/useWebSocketImplementation";
 
 //console.log("Google API Key:", import.meta.env.VITE_GOOGLE_API_KEY);
 
@@ -34,7 +33,7 @@ const App = () => {
     session,
     sendRealtimeInput,
     responseQueue,
-  } = useGeminiNativeAudio({
+  } = useWebSocketImplementation({
     apiKey: import.meta.env.VITE_GOOGLE_API_KEY,
     voiceName: selectedVoice,
     responseModalities: [Modality.AUDIO],
@@ -408,6 +407,17 @@ const reportIfTokensUsage = ({
   };
 
   return usage;
+};
+
+type TokensUsageType = {
+  input: {
+    textTokens: number;
+    audioTokens: number;
+  };
+  output: {
+    textTokens: number;
+    audioTokens: number;
+  };
 };
 
 export default App;

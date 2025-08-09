@@ -175,17 +175,6 @@ const useGeminiNativeAudio = ({
   };
 };
 
-type TokensUsageType = {
-  input: {
-    textTokens: number;
-    audioTokens: number;
-  };
-  output: {
-    textTokens: number;
-    audioTokens: number;
-  };
-};
-
 const combineResponseQueueToBase64Pcm = ({
   responseQueue,
 }: {
@@ -291,4 +280,4 @@ type VoiceNameType =
   | "Sulafat";
 
 export { useGeminiNativeAudio, AvailableVoices };
-export type { TokensUsageType, VoiceNameType };
+export type { VoiceNameType };

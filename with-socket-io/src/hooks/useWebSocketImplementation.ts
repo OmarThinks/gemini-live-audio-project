@@ -6,7 +6,6 @@ import {
   type LiveServerMessage,
   type Part,
   type UsageMetadata,
-  type ListModelsConfig,
 } from "@google/genai";
 import { Buffer } from "buffer";
 
@@ -117,9 +116,14 @@ const useWebSocketImplementation = ({
     };
     socketRef.current.onerror = (error) => {
       console.log("WebSocket error:", error);
+      console.debug("Error:", error);
+      onSocketError?.(error);
     };
     socketRef.current.onclose = (event) => {
-      console.log("WebSocket connection closed:", event);
+      console.debug("Close:", event.reason);
+      console.log("Session closed:", event);
+      socketRef.current = null;
+      onSocketClose?.(event);
       setIsConnected(false);
     };
   }, [
@@ -127,6 +131,8 @@ const useWebSocketImplementation = ({
     onAiResponseCompleted,
     onReceivingMessage,
     onResponseChunks,
+    onSocketClose,
+    onSocketError,
     onUsageReporting,
     onUserInterruption,
     responseQueue,
@@ -181,11 +187,10 @@ const useWebSocketImplementation = ({
 
       const messageToSend: LiveClientMessage = {
         realtimeInput: {
-          text: "Hello",
-          /*audio: {
+          audio: {
             data: message,
             mimeType: "audio/pcm;rate=16000",
-          },*/
+          },
         },
       };
 
@@ -309,4 +314,5 @@ type VoiceNameType =
   | "Sadaltager"
   | "Sulafat";
 
-export { useWebSocketImplementation };
+export { useWebSocketImplementation, AvailableVoices };
+export type { VoiceNameType };
