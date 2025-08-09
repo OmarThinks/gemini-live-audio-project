@@ -1,3 +1,13 @@
+import { useWebSocketImplementation } from "./hooks/useWebSocketImplemntation";
+
+//console.log("Google API Key:", import.meta.env.VITE_GOOGLE_API_KEY);
+
+const App = () => {
+  return <div>App</div>;
+};
+
+/*
+
 import type {
   LiveServerMessage,
   MediaModality,
@@ -14,6 +24,8 @@ import {
 } from "./hooks/useGeminiNativeAudio";
 
 //console.log("Google API Key:", import.meta.env.VITE_GOOGLE_API_KEY);
+
+
 
 const App = () => {
   const [recording, setRecording] = useState(false);
@@ -409,5 +421,7 @@ const reportIfTokensUsage = ({
 
   return usage;
 };
+
+*/
 
 export default App;
