@@ -24,6 +24,7 @@ const useWebSocketImplementation = ({
   onUserInterruption,
   targetTokens,
   voiceName = AvailableVoices[0].voiceName,
+  onTurnComplete,
 }: {
   apiKey: string;
   responseModalities?: Modality[];
@@ -37,12 +38,15 @@ const useWebSocketImplementation = ({
   onUserInterruption?: () => void;
   targetTokens?: number;
   voiceName?: string; // Optional voice name, default to first available voice
+  onTurnComplete?: () => void;
 }) => {
   const innerResponseQueue = useRef<Part[]>([]);
   const [responseQueue, setResponseQueue] = useState<Part[]>([]);
   const socketRef = useRef<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const _targetTokens = targetTokens ? `${targetTokens}` : undefined;
+
+  const turnCompleteRef = useRef(true);
 
   console.log("isConnected:", isConnected);
 
@@ -82,7 +86,11 @@ const useWebSocketImplementation = ({
       }
       onReceivingMessage?.(message);
 
+      console.log("turnComplete:", message.serverContent?.turnComplete);
+
       if (message.serverContent?.turnComplete) {
+        turnCompleteRef.current = true;
+        onTurnComplete?.();
         const combinedBase64 = combineResponseQueueToBase64Pcm({
           responseQueue: innerResponseQueue.current,
         });
@@ -90,7 +98,8 @@ const useWebSocketImplementation = ({
         console.log(
           "AI Turn completed, base64 audio:",
           responseQueue,
-          combinedBase64
+          combinedBase64,
+          innerResponseQueue.current
         );
       }
       if (message?.serverContent?.modelTurn?.parts) {
@@ -101,17 +110,17 @@ const useWebSocketImplementation = ({
 
         if (parts.length > 0) {
           onResponseChunks?.(parts);
-          setResponseQueue((prev) => [...prev, ...parts]);
-          innerResponseQueue.current = [
-            ...innerResponseQueue.current,
-            ...parts,
-          ];
+
+          const newResponseQueue = turnCompleteRef.current
+            ? [...parts]
+            : [...innerResponseQueue.current, ...parts];
+          turnCompleteRef.current = false;
+          setResponseQueue(newResponseQueue);
+          innerResponseQueue.current = newResponseQueue;
         }
       }
       if (message?.serverContent?.interrupted) {
         onUserInterruption?.();
-        setResponseQueue([]);
-        innerResponseQueue.current = [];
       }
     };
     socketRef.current.onerror = (error) => {
@@ -133,6 +142,7 @@ const useWebSocketImplementation = ({
     onResponseChunks,
     onSocketClose,
     onSocketError,
+    onTurnComplete,
     onUsageReporting,
     onUserInterruption,
     responseQueue,
@@ -152,7 +162,7 @@ const useWebSocketImplementation = ({
             },
           },
         },
-        systemInstruction,
+        systemInstruction: { role: systemInstruction },
         contextWindowCompression: {
           slidingWindow: { targetTokens: _targetTokens },
         },

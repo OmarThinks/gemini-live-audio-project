@@ -30,7 +30,6 @@ const App = () => {
     connectSocket,
     disconnectSocket,
     isConnected,
-    session,
     sendRealtimeInput,
     responseQueue,
   } = useWebSocketImplementation({
@@ -44,7 +43,7 @@ const App = () => {
       console.log("New Usage Report:", tokensUsage);
     },
     onAiResponseCompleted(base64Audio) {
-      console.log(base64Audio);
+      console.log("response completed", base64Audio);
 
       if (!(base64Audio && typeof base64Audio === "string")) {
         return;
@@ -158,14 +157,6 @@ const App = () => {
           <p key={index}>{JSON.stringify(message)}</p>
         ))}
       </div>
-      <button
-        onClick={() => {
-          console.log(session.current);
-        }}
-      >
-        Log Session
-      </button>
-
       <button
         onClick={() => {
           console.log(JSON.stringify(responseQueue));
