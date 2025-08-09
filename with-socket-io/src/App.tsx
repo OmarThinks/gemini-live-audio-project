@@ -1,10 +1,37 @@
 import { useWebSocketImplementation } from "./hooks/useWebSocketImplemntation";
+import { base64Text } from "./base64Text";
 
 //console.log("Google API Key:", import.meta.env.VITE_GOOGLE_API_KEY);
 
 const App = () => {
-  const { connectWebSocket, disconnectWebSocket, isConnected } =
-    useWebSocketImplementation();
+  const {
+    connectWebSocket,
+    disconnectWebSocket,
+    isConnected,
+    sendRealtimeInput,
+  } = useWebSocketImplementation();
+
+  return (
+    <div style={{ padding: "20px" }}>
+      <h1>Google Gemini Live Audio</h1>
+      <p>Status: {isConnected ? "Connected" : "Disconnected"}</p>
+
+      {isConnected ? (
+        <div className=" gap-3 flex flex-col">
+          <button
+            onClick={() => {
+              sendRealtimeInput(base64Text);
+            }}
+          >
+            Ping
+          </button>
+          <button onClick={disconnectWebSocket}>Disconnect</button>
+        </div>
+      ) : (
+        <button onClick={connectWebSocket}>Connect</button>
+      )}
+    </div>
+  );
 
   return (
     <div>

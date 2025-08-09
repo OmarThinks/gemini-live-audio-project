@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { LiveClientRealtimeInput, LiveClientMessage } from "@google/genai";
 
 const useWebSocketImplementation = () => {
   const socketRef = useRef<WebSocket | null>(null);
@@ -16,17 +17,17 @@ const useWebSocketImplementation = () => {
     );
     socketRef.current = ws;
     socketRef.current.onopen = () => {
-      console.debug("WebSocket connection opened");
+      console.log("WebSocket connection opened");
       setIsConnected(true);
     };
     socketRef.current.onmessage = (event) => {
-      console.debug("WebSocket message received:", event.data);
+      console.log("WebSocket message received:", event.data);
     };
     socketRef.current.onerror = (error) => {
-      console.error("WebSocket error:", error);
+      console.log("WebSocket error:", error);
     };
     socketRef.current.onclose = (event) => {
-      console.debug("WebSocket connection closed:", event);
+      console.log("WebSocket connection closed:", event);
       setIsConnected(false);
     };
 
@@ -45,14 +46,35 @@ const useWebSocketImplementation = () => {
     return () => {
       disconnectWebSocket();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [disconnectWebSocket]);
+
+  const sendRealtimeInput = useCallback(
+    (message: string) => {
+      if (!isConnected || !socketRef.current) {
+        console.warn("WebSocket is not connected");
+        return;
+      }
+
+      const messageToSend: LiveClientMessage = {
+        realtimeInput: {
+          audio: {
+            data: message,
+            mimeType: "audio/pcm;rate=16000",
+          },
+        },
+      };
+
+      socketRef.current.send(JSON.stringify(messageToSend));
+    },
+    [isConnected]
+  );
 
   return {
     socket: socketRef.current,
     isConnected,
     connectWebSocket,
     disconnectWebSocket,
+    sendRealtimeInput,
   };
 };
 
