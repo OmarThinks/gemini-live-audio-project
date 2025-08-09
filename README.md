@@ -13,6 +13,7 @@ VITE_GOOGLE_API_KEY="your_google_api_key"
 And then run these commands
 
 ```bash
+cd frontend
 npm i
 npm run dev
 ```
