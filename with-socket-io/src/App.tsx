@@ -5,7 +5,7 @@ import type {
 } from "@google/genai";
 import { Modality } from "@google/genai/web";
 import { useCallback, useRef, useState } from "react";
-import { base64Text } from "./base64Text";
+import { dumnmyBase64Text } from "./dumnmyBase64Text";
 import {
   AvailableVoices,
   useGeminiLiveAudio,
@@ -132,7 +132,7 @@ const App = () => {
         <div className=" gap-3 flex flex-col">
           <button
             onClick={() => {
-              sendRealtimeInput(base64Text);
+              sendRealtimeInput(dumnmyBase64Text);
             }}
           >
             Ping
@@ -245,7 +245,7 @@ const App = () => {
         <button
           onClick={() => {
             playPCMBase64({
-              base64String: base64Text,
+              base64String: dumnmyBase64Text,
               sampleRate: 16000,
             });
           }}
