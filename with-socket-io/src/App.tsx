@@ -3,13 +3,15 @@ import { base64Text } from "./base64Text";
 
 //console.log("Google API Key:", import.meta.env.VITE_GOOGLE_API_KEY);
 
+const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
+
 const App = () => {
   const {
     connectWebSocket,
     disconnectWebSocket,
     isConnected,
     sendRealtimeInput,
-  } = useWebSocketImplementation();
+  } = useWebSocketImplementation({ apiKey });
 
   return (
     <div style={{ padding: "20px" }}>

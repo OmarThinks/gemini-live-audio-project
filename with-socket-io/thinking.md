@@ -1,5 +1,11 @@
 ✅
 
+# API response Length:
+
+# Call list models
+
+gemini-2.5-flash is not found for API version v1beta, or is not supported for bidiGenerateContent. Call ListModels to see t
+
 # HANDLING MESSAGE QUEUE
 
 - Clear useless button
