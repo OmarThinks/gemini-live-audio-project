@@ -1,5 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Buffer } from "buffer";
+import {
+  Modality,
+  type LiveClientMessage,
+  type LiveClientSetup,
+} from "@google/genai";
+
+// Models: https://ai.google.dev/gemini-api/docs/live#audio-generation
+
+const models = [
+  // Native Audio
+  "gemini-2.5-flash-preview-native-audio-dialog",
+  "gemini-2.5-flash-exp-native-audio-thinking-dialog",
+
+  // Half cascade audio
+  "gemini-live-2.5-flash-preview",
+  "gemini-2.0-flash-live-001",
+];
+
+const model = models[3];
 
 const useGeminiLiveAudio = ({
   instructions,
@@ -64,14 +83,13 @@ const useGeminiLiveAudio = ({
           onSocketError?.(error);
         });
 
-        /*
         ws.addEventListener("message", (event) => {
           //console.log("WebSocket message:", event.data);
           // convert message to an object
 
           const messageObject = JSON.parse(event.data);
           onMessageReceived(messageObject);
-          if (messageObject.type === "response.created") {
+          /*if (messageObject.type === "response.created") {
             setIsAiResponseInProgress(true);
             setTranscription("");
           }
@@ -98,8 +116,8 @@ const useGeminiLiveAudio = ({
           }
           if (messageObject.type === "response.audio_transcript.delta") {
             setTranscription((prev) => prev + messageObject.delta);
-          }
-        });*/
+          }*/
+        });
 
         webSocketRef.current = ws;
       } catch (error) {
@@ -134,15 +152,32 @@ const useGeminiLiveAudio = ({
 
   useEffect(() => {
     if (isWebSocketConnected) {
-      const event = {
-        type: "session.update",
-        session: {
-          instructions,
+      const serverConfig: LiveClientSetup = {
+        model,
+        generationConfig: {
+          responseModalities: [Modality.AUDIO, Modality.TEXT],
+          /*speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: {
+                voiceName,
+              },
+            },
+          },*/
+        },
+        systemInstruction: { role: instructions },
+        contextWindowCompression: {
+          slidingWindow: { targetTokens: "15000" },
         },
       };
-      //webSocketRef.current?.send(JSON.stringify(event));
+
+      sendMessage({
+        setup: serverConfig,
+      });
+    } else {
+      console.log("WebSocket is not connected");
     }
-  }, [instructions, isWebSocketConnected]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isWebSocketConnected]);
 
   const sendMessage = useCallback(
     (messageObject: { [key: string]: any }) => {
@@ -161,10 +196,16 @@ const useGeminiLiveAudio = ({
   const sendBase64AudioStringChunk = useCallback(
     (base64String: string) => {
       if (webSocketRef.current) {
-        sendMessage({
-          type: "input_audio_buffer.append",
-          audio: base64String,
-        });
+        const messageToSend: LiveClientMessage = {
+          realtimeInput: {
+            audio: {
+              data: base64String,
+              mimeType: "audio/pcm;rate=16000",
+            },
+          },
+        };
+
+        sendMessage(messageToSend);
       }
     },
     [sendMessage]
@@ -213,5 +254,73 @@ const combineBase64ArrayList = (base64Array: string[]): string => {
 
   return combinedBase64;
 };
+
+const AvailableVoices: {
+  voiceName: VoiceNameType;
+  description: string;
+}[] = [
+  { voiceName: "Zephyr", description: "Bright" },
+  { voiceName: "Puck", description: "Upbeat" },
+  { voiceName: "Charon", description: "Informative" },
+  { voiceName: "Kore", description: "Firm" },
+  { voiceName: "Fenrir", description: "Excitable" },
+  { voiceName: "Leda", description: "Youthful" },
+  { voiceName: "Orus", description: "Firm" },
+  { voiceName: "Aoede", description: "Breezy" },
+  { voiceName: "Callirrhoe", description: "Easy-going" },
+  { voiceName: "Autonoe", description: "Bright" },
+  { voiceName: "Enceladus", description: "Breathy" },
+  { voiceName: "Iapetus", description: "Clear" },
+  { voiceName: "Umbriel", description: "Easy-going" },
+  { voiceName: "Algieba", description: "Smooth" },
+  { voiceName: "Despina", description: "Smooth" },
+  { voiceName: "Erinome", description: "Clear" },
+  { voiceName: "Algenib", description: "Gravelly" },
+  { voiceName: "Rasalgethi", description: "Informative" },
+  { voiceName: "Laomedeia", description: "Upbeat" },
+  { voiceName: "Achernar", description: "Soft" },
+  { voiceName: "Alnilam", description: "Firm" },
+  { voiceName: "Schedar", description: "Even" },
+  { voiceName: "Gacrux", description: "Mature" },
+  { voiceName: "Pulcherrima", description: "Forward" },
+  { voiceName: "Achird", description: "Friendly" },
+  { voiceName: "Zubenelgenubi", description: "Casual" },
+  { voiceName: "Vindemiatrix", description: "Gentle" },
+  { voiceName: "Sadachbia", description: "Lively" },
+  { voiceName: "Sadaltager", description: "Knowledgeable" },
+  { voiceName: "Sulafat", description: "Warm" },
+];
+
+type VoiceNameType =
+  | "Zephyr"
+  | "Puck"
+  | "Charon"
+  | "Kore"
+  | "Fenrir"
+  | "Leda"
+  | "Orus"
+  | "Aoede"
+  | "Callirrhoe"
+  | "Autonoe"
+  | "Enceladus"
+  | "Iapetus"
+  | "Umbriel"
+  | "Algieba"
+  | "Despina"
+  | "Erinome"
+  | "Algenib"
+  | "Rasalgethi"
+  | "Laomedeia"
+  | "Achernar"
+  | "Alnilam"
+  | "Schedar"
+  | "Gacrux"
+  | "Pulcherrima"
+  | "Achird"
+  | "Zubenelgenubi"
+  | "Vindemiatrix"
+  | "Sadachbia"
+  | "Sadaltager"
+  | "Sulafat";
 
 export { useGeminiLiveAudio, combineBase64ArrayList };
