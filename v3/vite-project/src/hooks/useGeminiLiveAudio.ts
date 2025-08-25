@@ -43,7 +43,6 @@ const useGeminiLiveAudio = ({
   const [isWebSocketConnected, setIsWebSocketConnected] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isAiResponseInProgress, setIsAiResponseInProgress] = useState(false);
-  const [transcription, setTranscription] = useState<string>("");
   const responseQueueRef = useRef<string[]>([]);
 
   const resetHookState = useCallback(() => {
@@ -53,7 +52,6 @@ const useGeminiLiveAudio = ({
     setIsInitialized(false);
     responseQueueRef.current = [];
     setIsAiResponseInProgress(false);
-    setTranscription("");
   }, []);
 
   const connectWebSocket = useCallback(
@@ -100,7 +98,6 @@ const useGeminiLiveAudio = ({
 
           /*if (messageObject.type === "response.created") {
             setIsAiResponseInProgress(true);
-            setTranscription("");
           }
           if (messageObject.type === "response.audio.done") {
             setIsAiResponseInProgress(false);
@@ -118,10 +115,6 @@ const useGeminiLiveAudio = ({
           }
           if (messageObject?.response?.usage) {
             onUsageReport(messageObject.response.usage);
-          }
-
-          if (messageObject.type === "response.audio_transcript.delta") {
-            setTranscription((prev) => prev + messageObject.delta);
           }*/
         });
 
@@ -227,7 +220,6 @@ const useGeminiLiveAudio = ({
     sendBase64AudioStringChunk,
     isInitialized,
     isAiResponseInProgress,
-    transcription,
   };
 };
 

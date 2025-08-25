@@ -57,7 +57,6 @@ function App() {
     sendBase64AudioStringChunk,
     isAiResponseInProgress,
     isInitialized,
-    transcription,
   } = useGeminiLiveAudio({
     instructions: "You are a helpful assistant.",
     onMessageReceived: enqueueMessage,
@@ -170,13 +169,6 @@ function App() {
           Log Messages
         </button>
       </div>
-      <hr />
-
-      <div>
-        <h2 className=" text-[30px] font-bold">Transcription:</h2>
-        <p>{transcription}</p>
-      </div>
-
       <hr />
 
       <div className=" flex-row flex items-center">
