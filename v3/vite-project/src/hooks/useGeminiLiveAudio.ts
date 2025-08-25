@@ -95,11 +95,22 @@ const useGeminiLiveAudio = ({
             setIsInitialized(true);
             onReadyToReceiveAudio();
           }
+          const parts = message?.serverContent?.modelTurn?.parts;
 
-          /*if (messageObject.type === "response.created") {
+          if (parts) {
+            for (const part of parts) {
+              const audioChunk = part?.inlineData?.data;
+              if (audioChunk) {
+                responseQueueRef.current.push(audioChunk);
+              }
+            }
+          }
+
+          if (message?.serverContent) {
             setIsAiResponseInProgress(true);
           }
-          if (messageObject.type === "response.audio.done") {
+
+          if (message?.serverContent?.generationComplete) {
             setIsAiResponseInProgress(false);
             const combinedBase64 = combineBase64ArrayList(
               responseQueueRef.current
@@ -107,15 +118,10 @@ const useGeminiLiveAudio = ({
             responseQueueRef.current = [];
             onAudioResponseComplete(combinedBase64);
           }
-          if (messageObject.type === "response.audio.delta") {
-            const audioChunk = messageObject.delta;
-            if (audioChunk) {
-              responseQueueRef.current.push(audioChunk);
-            }
+
+          if (message?.usageMetadata) {
+            onUsageReport(message.usageMetadata);
           }
-          if (messageObject?.response?.usage) {
-            onUsageReport(messageObject.response.usage);
-          }*/
         });
 
         webSocketRef.current = ws;
@@ -126,10 +132,12 @@ const useGeminiLiveAudio = ({
       }
     },
     [
+      onAudioResponseComplete,
       onMessageReceived,
       onReadyToReceiveAudio,
       onSocketClose,
       onSocketError,
+      onUsageReport,
       resetHookState,
     ]
   );
