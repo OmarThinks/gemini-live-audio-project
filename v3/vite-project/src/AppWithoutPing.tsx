@@ -2,7 +2,7 @@ import "./App.css";
 import {
   combineBase64ArrayList,
   useOpenAiRealTime,
-} from "./hooks/useOpenAiRealTimeHook";
+} from "./hooks/useGeminiLiveAudio";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 function App() {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Buffer } from "buffer";
 
-const useOpenAiRealTime = ({
+const useGeminiLiveAudio = ({
   instructions,
   onMessageReceived,
   onAudioResponseComplete,
@@ -218,4 +218,4 @@ const combineBase64ArrayList = (base64Array: string[]): string => {
   return combinedBase64;
 };
 
-export { useOpenAiRealTime, combineBase64ArrayList };
+export { useGeminiLiveAudio, combineBase64ArrayList };

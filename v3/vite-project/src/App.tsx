@@ -3,8 +3,8 @@ import "./App.css";
 import { dummyBase64Audio24K } from "./samples/dummyBase64Audio";
 import {
   combineBase64ArrayList,
-  useOpenAiRealTime,
-} from "./hooks/useOpenAiRealTimeHook";
+  useGeminiLiveAudio,
+} from "./hooks/useGeminiLiveAudio";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 function App() {
@@ -58,7 +58,7 @@ function App() {
     isAiResponseInProgress,
     isInitialized,
     transcription,
-  } = useOpenAiRealTime({
+  } = useGeminiLiveAudio({
     instructions: "You are a helpful assistant.",
     onMessageReceived: enqueueMessage,
     onAudioResponseComplete,
