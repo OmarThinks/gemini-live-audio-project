@@ -2,15 +2,15 @@
 
 - YouTube: https://www.youtube.com/watch?v=o9jtJL81jf0
 
-<img src="./media/Screenshot.png" />
-
 ### How to use:
+
+<img src="./media/Screenshot.png" />
 
 ```bash
 git clone https://github.com/OmarThinks/gemini-live-audio-project
 ```
 
-Navigate to `v3/express-project`, and create a `.env` file, and put your openai API key like this:
+Navigate to `v3/express-project`, and create a `.env` file, and put your Gemini API key like this:
 
 ```bash
 GOOGLE_API_KEY=""
