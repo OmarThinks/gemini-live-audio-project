@@ -1,6 +1,6 @@
 # gemini-live-audio-project:
 
-- YouTube: TODO
+- YouTube: https://www.youtube.com/watch?v=o9jtJL81jf0
 
 <img src="./media/Screenshot.png" />
 
