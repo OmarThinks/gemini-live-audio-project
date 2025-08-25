@@ -1,4 +1,8 @@
-import { LiveServerMessage, type LiveClientMessage } from "@google/genai";
+import {
+  type LiveServerMessage,
+  type LiveClientMessage,
+  type UsageMetadata,
+} from "@google/genai";
 import { Buffer } from "buffer";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -10,12 +14,12 @@ const useGeminiLiveAudio = ({
   onSocketClose,
   onSocketError,
 }: {
-  onMessageReceived: (message: object) => void;
+  onMessageReceived: (message: LiveServerMessage) => void;
   onAudioResponseComplete: (base64Audio: string) => void;
-  onUsageReport: (usage: object) => void;
+  onUsageReport: (usage: UsageMetadata) => void;
   onReadyToReceiveAudio: () => void;
   onSocketClose: (closeEvent: CloseEvent) => void;
-  onSocketError?: (error: any) => void;
+  onSocketError?: (error: Event) => void;
 }) => {
   const webSocketRef = useRef<null | WebSocket>(null);
   const [isWebSocketConnecting, setIsWebSocketConnecting] = useState(false);

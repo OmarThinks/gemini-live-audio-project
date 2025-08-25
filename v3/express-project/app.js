@@ -23,7 +23,7 @@ const models = [
   "gemini-2.5-flash-preview-native-audio-dialog",
   "gemini-2.5-flash-exp-native-audio-thinking-dialog",
 
-  // Half cascade audio: (Text that is transcribed)
+  // Half cascade audio: (Text that is transcribed, is think)
   "gemini-live-2.5-flash-preview",
   "gemini-2.0-flash-live-001",
 ];

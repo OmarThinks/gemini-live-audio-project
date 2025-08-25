@@ -1,5 +1,5 @@
 import "./App.css";
-// Just a dummy base64 24K audio for pinging, it says "Hey, can you hear me?"
+// Just a dummy base64 24K audio for pinging the api, it says "Hey, can you hear me?", you can remove it if you want.
 import { dummyBase64Audio24K } from "./samples/dummyBase64Audio";
 import {
   combineBase64ArrayList,
