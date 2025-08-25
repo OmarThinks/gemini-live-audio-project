@@ -17,12 +17,13 @@ const client = new GoogleGenAI({
   httpOptions: { apiVersion: "v1alpha" },
 });
 
+// Models: https://ai.google.dev/gemini-api/docs/live#audio-generation
 const models = [
   // Native Audio
   "gemini-2.5-flash-preview-native-audio-dialog",
   "gemini-2.5-flash-exp-native-audio-thinking-dialog",
 
-  // Half cascade audio
+  // Half cascade audio: (Text that is transcribed)
   "gemini-live-2.5-flash-preview",
   "gemini-2.0-flash-live-001",
 ];

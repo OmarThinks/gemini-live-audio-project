@@ -39,11 +39,14 @@ function App() {
     console.log("Usage report:", usage);
   }, []);
 
-  const onSocketClose = useCallback(() => {
-    console.log("onSocketClose");
-    //stopStreaming();
-    stopPlayingAudio();
-  }, [stopPlayingAudio]);
+  const onSocketClose = useCallback(
+    (closeEvent: CloseEvent) => {
+      console.log("onSocketClose", closeEvent);
+      //stopStreaming();
+      stopPlayingAudio();
+    },
+    [stopPlayingAudio]
+  );
 
   const onReadyToReceiveAudio = useCallback(() => {
     //startStreaming();
@@ -58,7 +61,6 @@ function App() {
     isAiResponseInProgress,
     isInitialized,
   } = useGeminiLiveAudio({
-    instructions: "You are a helpful assistant.",
     onMessageReceived: enqueueMessage,
     onAudioResponseComplete,
     onUsageReport,

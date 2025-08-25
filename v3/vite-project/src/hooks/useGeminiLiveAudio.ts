@@ -1,16 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { LiveServerMessage, type LiveClientMessage } from "@google/genai";
 import { Buffer } from "buffer";
-import {
-  LiveServerMessage,
-  Modality,
-  type LiveClientMessage,
-  type LiveClientSetup,
-} from "@google/genai";
-
-// Models: https://ai.google.dev/gemini-api/docs/live#audio-generation
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const useGeminiLiveAudio = ({
-  instructions,
   onMessageReceived,
   onAudioResponseComplete,
   onUsageReport,
@@ -18,12 +10,11 @@ const useGeminiLiveAudio = ({
   onSocketClose,
   onSocketError,
 }: {
-  instructions: string;
   onMessageReceived: (message: object) => void;
   onAudioResponseComplete: (base64Audio: string) => void;
   onUsageReport: (usage: object) => void;
   onReadyToReceiveAudio: () => void;
-  onSocketClose: () => void;
+  onSocketClose: (closeEvent: CloseEvent) => void;
   onSocketError?: (error: any) => void;
 }) => {
   const webSocketRef = useRef<null | WebSocket>(null);
@@ -63,11 +54,10 @@ const useGeminiLiveAudio = ({
           setIsWebSocketConnected(true);
         });
 
-        ws.addEventListener("close", (abc) => {
-          console.log("Disconnected from server.", abc);
+        ws.addEventListener("close", (closeEvent) => {
           setIsWebSocketConnected(false);
           resetHookState();
-          onSocketClose();
+          onSocketClose(closeEvent);
         });
 
         ws.addEventListener("error", (error) => {
@@ -151,44 +141,14 @@ const useGeminiLiveAudio = ({
 
   useEffect(() => {
     if (isWebSocketConnected) {
-      const serverConfig: LiveClientSetup = {
-        model: "models/gemini-2.0-flash-live-001",
-        generationConfig: {
-          responseModalities: [Modality.AUDIO],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: {
-                voiceName: "Zephyr",
-              },
-            },
-          },
-        },
-        systemInstruction: { role: instructions },
-        contextWindowCompression: {
-          slidingWindow: { targetTokens: "15000" },
-        },
-      };
-
-      const setupConfig: LiveClientSetup = {
-        generationConfig: {
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: {
-                voiceName: "Zephyr",
-              },
-            },
-          },
-        },
-      };
-
       console.log("sending server config message", webSocketRef.current);
       const message: LiveClientMessage = {
-        setup: setupConfig,
+        setup: {},
       };
 
       webSocketRef.current?.send(JSON.stringify(message));
     }
-  }, [instructions, isWebSocketConnected]);
+  }, [isWebSocketConnected]);
 
   const sendMessage = useCallback(
     (messageObject: LiveClientMessage) => {
@@ -268,4 +228,4 @@ const combineBase64ArrayList = (base64Array: string[]): string => {
   return combinedBase64;
 };
 
-export { useGeminiLiveAudio, combineBase64ArrayList };
+export { combineBase64ArrayList, useGeminiLiveAudio };
