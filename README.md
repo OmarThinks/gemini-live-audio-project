@@ -1,30 +1,31 @@
 # gemini-live-audio-project:
 
-## How to use:
+- YouTube: TODO
 
-- Clone the repo
-- create a file called `.env`
-- inside this file, put the following text:
+<img src="./media/Screenshot.png" />
+
+### How to use:
 
 ```bash
-VITE_GOOGLE_API_KEY="your_google_api_key"
+git clone https://github.com/OmarThinks/gemini-live-audio-project
 ```
 
-And then run these commands
+Navigate to `v3/express-project`, and create a `.env` file, and put your openai API key like this:
 
 ```bash
-cd v2
-npm i
+GOOGLE_API_KEY=""
+```
+
+Then run the backend like this:
+
+```bash
+cd v3/express-project
+npm start
+```
+
+And in another terminal tab, run the vite project:
+
+```bash
+cd v3/vite-project
 npm run dev
 ```
-
-## After running the app:
-
-Do the following:
-
-- Connect Button (To connect with the web socket of Google Live API)
-- Ping Button (To test a message) (Optional)
-- Start Recording Button (To record the voice)
-- Stop Recording Button (To stop recording)
-- Send button
-- The voice will be played after it's complete
