@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Buffer } from "buffer";
 import {
+  LiveServerMessage,
   Modality,
   type LiveClientMessage,
   type LiveClientSetup,
@@ -10,15 +11,15 @@ import {
 
 const models = [
   // Native Audio
-  "gemini-2.5-flash-preview-native-audio-dialog",
-  "gemini-2.5-flash-exp-native-audio-thinking-dialog",
+  "models/gemini-2.5-flash-preview-native-audio-dialog",
+  "models/gemini-2.5-flash-exp-native-audio-thinking-dialog",
 
   // Half cascade audio
-  "gemini-live-2.5-flash-preview",
-  "gemini-2.0-flash-live-001",
+  "models/gemini-live-2.5-flash-preview",
+  "models/gemini-2.0-flash-live-001",
 ];
 
-const model = models[3];
+const model = models[0];
 
 const useGeminiLiveAudio = ({
   instructions,
@@ -71,8 +72,8 @@ const useGeminiLiveAudio = ({
           setIsWebSocketConnected(true);
         });
 
-        ws.addEventListener("close", () => {
-          console.log("Disconnected from server.");
+        ws.addEventListener("close", (abc) => {
+          console.log("Disconnected from server.", abc);
           setIsWebSocketConnected(false);
           resetHookState();
           onSocketClose();
@@ -83,12 +84,14 @@ const useGeminiLiveAudio = ({
           onSocketError?.(error);
         });
 
-        ws.addEventListener("message", (event) => {
+        ws.addEventListener("message", async (event) => {
           //console.log("WebSocket message:", event.data);
           // convert message to an object
+          const text = await event.data.text();
+          const message: LiveServerMessage = JSON.parse(text);
+          console.log("WebSocket message received:", message);
 
-          const messageObject = JSON.parse(event.data);
-          onMessageReceived(messageObject);
+          onMessageReceived(message);
           /*if (messageObject.type === "response.created") {
             setIsAiResponseInProgress(true);
             setTranscription("");
@@ -145,6 +148,7 @@ const useGeminiLiveAudio = ({
 
   useEffect(() => {
     return () => {
+      console.log("-------------------- I'm disconnecting");
       disconnectSocket();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -155,14 +159,14 @@ const useGeminiLiveAudio = ({
       const serverConfig: LiveClientSetup = {
         model,
         generationConfig: {
-          responseModalities: [Modality.AUDIO, Modality.TEXT],
-          /*speechConfig: {
+          responseModalities: [Modality.AUDIO],
+          speechConfig: {
             voiceConfig: {
               prebuiltVoiceConfig: {
-                voiceName,
+                voiceName: AvailableVoices[0].voiceName,
               },
             },
-          },*/
+          },
         },
         systemInstruction: { role: instructions },
         contextWindowCompression: {
@@ -170,17 +174,17 @@ const useGeminiLiveAudio = ({
         },
       };
 
-      sendMessage({
+      console.log("sending server config message");
+      const message: LiveClientMessage = {
         setup: serverConfig,
-      });
-    } else {
-      console.log("WebSocket is not connected");
+      };
+
+      webSocketRef.current?.send(JSON.stringify(message));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isWebSocketConnected]);
+  }, [instructions, isWebSocketConnected]);
 
   const sendMessage = useCallback(
-    (messageObject: { [key: string]: any }) => {
+    (messageObject: LiveClientMessage) => {
       if (
         webSocketRef.current &&
         webSocketRef.current.readyState === WebSocket.OPEN &&
