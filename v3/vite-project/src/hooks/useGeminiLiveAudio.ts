@@ -44,13 +44,8 @@ const useGeminiLiveAudio = ({
       }
 
       try {
-        const url = `wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17&token=${ephemeralKey}`;
-
-        const ws = new WebSocket(url, [
-          "realtime",
-          "openai-insecure-api-key." + ephemeralKey,
-          "openai-beta.realtime-v1",
-        ]);
+        const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${ephemeralKey}`;
+        const ws = new WebSocket(url);
 
         ws.addEventListener("open", () => {
           console.log("Connected to server.");
@@ -69,6 +64,7 @@ const useGeminiLiveAudio = ({
           onSocketError?.(error);
         });
 
+        /*
         ws.addEventListener("message", (event) => {
           //console.log("WebSocket message:", event.data);
           // convert message to an object
@@ -103,7 +99,7 @@ const useGeminiLiveAudio = ({
           if (messageObject.type === "response.audio_transcript.delta") {
             setTranscription((prev) => prev + messageObject.delta);
           }
-        });
+        });*/
 
         webSocketRef.current = ws;
       } catch (error) {
@@ -144,7 +140,7 @@ const useGeminiLiveAudio = ({
           instructions,
         },
       };
-      webSocketRef.current?.send(JSON.stringify(event));
+      //webSocketRef.current?.send(JSON.stringify(event));
     }
   }, [instructions, isWebSocketConnected]);
 

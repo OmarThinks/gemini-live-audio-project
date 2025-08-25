@@ -1,0 +1,9 @@
+- comment onMessage, oc close, on socket error ✅
+- comment getting the ephemeral token from express, and just use the api key ✅
+- Just connect with the api key ✅
+- Make sure that the connection happens ✅
+- handle on close ✅
+- handle on error ✅
+- setup
+- handle on message, case by case
+- test the communication
