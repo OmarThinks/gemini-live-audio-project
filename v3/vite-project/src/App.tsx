@@ -73,7 +73,7 @@ function App() {
 
   const [chunks, setChunks] = useState<string[]>([]);
 
-  console.log("before onAudioStreamerChunk: ", isAiResponseInProgress);
+  //console.log("before onAudioStreamerChunk: ", isAiResponseInProgress);
 
   const onAudioStreamerChunk = useCallback(
     (chunk: string) => {

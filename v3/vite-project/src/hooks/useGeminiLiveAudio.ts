@@ -92,6 +92,12 @@ const useGeminiLiveAudio = ({
           console.log("WebSocket message received:", message);
 
           onMessageReceived(message);
+
+          if (message.setupComplete) {
+            setIsInitialized(true);
+            onReadyToReceiveAudio();
+          }
+
           /*if (messageObject.type === "response.created") {
             setIsAiResponseInProgress(true);
             setTranscription("");
@@ -113,10 +119,7 @@ const useGeminiLiveAudio = ({
           if (messageObject?.response?.usage) {
             onUsageReport(messageObject.response.usage);
           }
-          if (messageObject.type === "session.updated") {
-            setIsInitialized(true);
-            onReadyToReceiveAudio();
-          }
+
           if (messageObject.type === "response.audio_transcript.delta") {
             setTranscription((prev) => prev + messageObject.delta);
           }*/
@@ -130,12 +133,10 @@ const useGeminiLiveAudio = ({
       }
     },
     [
-      onAudioResponseComplete,
       onMessageReceived,
       onReadyToReceiveAudio,
       onSocketClose,
       onSocketError,
-      onUsageReport,
       resetHookState,
     ]
   );
@@ -199,7 +200,10 @@ const useGeminiLiveAudio = ({
 
   const sendBase64AudioStringChunk = useCallback(
     (base64String: string) => {
+      //console.log("Should send message");
       if (webSocketRef.current) {
+        //console.log("Should send message");
+
         const messageToSend: LiveClientMessage = {
           realtimeInput: {
             audio: {
