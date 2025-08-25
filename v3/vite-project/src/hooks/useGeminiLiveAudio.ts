@@ -9,18 +9,6 @@ import {
 
 // Models: https://ai.google.dev/gemini-api/docs/live#audio-generation
 
-const models = [
-  // Native Audio
-  "models/gemini-2.5-flash-preview-native-audio-dialog",
-  "models/gemini-2.5-flash-exp-native-audio-thinking-dialog",
-
-  // Half cascade audio
-  "models/gemini-live-2.5-flash-preview",
-  "models/gemini-2.0-flash-live-001",
-];
-
-const model = models[0];
-
 const useGeminiLiveAudio = ({
   instructions,
   onMessageReceived,
@@ -262,73 +250,5 @@ const combineBase64ArrayList = (base64Array: string[]): string => {
 
   return combinedBase64;
 };
-
-const AvailableVoices: {
-  voiceName: VoiceNameType;
-  description: string;
-}[] = [
-  { voiceName: "Zephyr", description: "Bright" },
-  { voiceName: "Puck", description: "Upbeat" },
-  { voiceName: "Charon", description: "Informative" },
-  { voiceName: "Kore", description: "Firm" },
-  { voiceName: "Fenrir", description: "Excitable" },
-  { voiceName: "Leda", description: "Youthful" },
-  { voiceName: "Orus", description: "Firm" },
-  { voiceName: "Aoede", description: "Breezy" },
-  { voiceName: "Callirrhoe", description: "Easy-going" },
-  { voiceName: "Autonoe", description: "Bright" },
-  { voiceName: "Enceladus", description: "Breathy" },
-  { voiceName: "Iapetus", description: "Clear" },
-  { voiceName: "Umbriel", description: "Easy-going" },
-  { voiceName: "Algieba", description: "Smooth" },
-  { voiceName: "Despina", description: "Smooth" },
-  { voiceName: "Erinome", description: "Clear" },
-  { voiceName: "Algenib", description: "Gravelly" },
-  { voiceName: "Rasalgethi", description: "Informative" },
-  { voiceName: "Laomedeia", description: "Upbeat" },
-  { voiceName: "Achernar", description: "Soft" },
-  { voiceName: "Alnilam", description: "Firm" },
-  { voiceName: "Schedar", description: "Even" },
-  { voiceName: "Gacrux", description: "Mature" },
-  { voiceName: "Pulcherrima", description: "Forward" },
-  { voiceName: "Achird", description: "Friendly" },
-  { voiceName: "Zubenelgenubi", description: "Casual" },
-  { voiceName: "Vindemiatrix", description: "Gentle" },
-  { voiceName: "Sadachbia", description: "Lively" },
-  { voiceName: "Sadaltager", description: "Knowledgeable" },
-  { voiceName: "Sulafat", description: "Warm" },
-];
-
-type VoiceNameType =
-  | "Zephyr"
-  | "Puck"
-  | "Charon"
-  | "Kore"
-  | "Fenrir"
-  | "Leda"
-  | "Orus"
-  | "Aoede"
-  | "Callirrhoe"
-  | "Autonoe"
-  | "Enceladus"
-  | "Iapetus"
-  | "Umbriel"
-  | "Algieba"
-  | "Despina"
-  | "Erinome"
-  | "Algenib"
-  | "Rasalgethi"
-  | "Laomedeia"
-  | "Achernar"
-  | "Alnilam"
-  | "Schedar"
-  | "Gacrux"
-  | "Pulcherrima"
-  | "Achird"
-  | "Zubenelgenubi"
-  | "Vindemiatrix"
-  | "Sadachbia"
-  | "Sadaltager"
-  | "Sulafat";
 
 export { useGeminiLiveAudio, combineBase64ArrayList };

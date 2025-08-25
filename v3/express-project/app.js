@@ -1,3 +1,4 @@
+const { GoogleGenAI, Modality } = require("@google/genai");
 require("dotenv").config();
 const cors = require("cors");
 const express = require("express");
@@ -11,25 +12,88 @@ app.get("/", (req, res) => {
   res.send("Hello, Express!");
 });
 
+const client = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
+
+const models = [
+  // Native Audio
+  "models/gemini-2.5-flash-preview-native-audio-dialog",
+  "models/gemini-2.5-flash-exp-native-audio-thinking-dialog",
+
+  // Half cascade audio
+  "models/gemini-live-2.5-flash-preview",
+  "models/gemini-2.0-flash-live-001",
+];
+
+const model = models[3];
+
 app.get("/session", async (req, res) => {
-  const r = await fetch("https://api.openai.com/v1/realtime/sessions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      "Content-Type": "application/json",
+  const expireTime = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+
+  const token = await client.authTokens.create({
+    config: {
+      liveConnectConstraints: {
+        model,
+        config: {
+          generationConfig: {
+            responseModalities: [Modality.AUDIO],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: {
+                  voiceName: AvailableVoices[0].voiceName,
+                },
+              },
+            },
+          },
+          systemInstruction: { role: "You are a helpful assistant." },
+          contextWindowCompression: {
+            slidingWindow: { targetTokens: "15000" },
+          },
+        },
+      },
+      httpOptions: {
+        apiVersion: "v1alpha",
+      },
     },
-    body: JSON.stringify({
-      model: "gpt-4o-realtime-preview-2025-06-03",
-      voice: "verse",
-    }),
   });
-  const data = await r.json();
 
   // Send back the JSON we received from the OpenAI REST API
-  res.send(data);
+  res.send({ token });
 });
 
 // Start the server
 app.listen(port, () => {
   console.log(`Express app listening at http://localhost:${port}`);
 });
+
+const AvailableVoices = [
+  { voiceName: "Zephyr", description: "Bright" },
+  { voiceName: "Puck", description: "Upbeat" },
+  { voiceName: "Charon", description: "Informative" },
+  { voiceName: "Kore", description: "Firm" },
+  { voiceName: "Fenrir", description: "Excitable" },
+  { voiceName: "Leda", description: "Youthful" },
+  { voiceName: "Orus", description: "Firm" },
+  { voiceName: "Aoede", description: "Breezy" },
+  { voiceName: "Callirrhoe", description: "Easy-going" },
+  { voiceName: "Autonoe", description: "Bright" },
+  { voiceName: "Enceladus", description: "Breathy" },
+  { voiceName: "Iapetus", description: "Clear" },
+  { voiceName: "Umbriel", description: "Easy-going" },
+  { voiceName: "Algieba", description: "Smooth" },
+  { voiceName: "Despina", description: "Smooth" },
+  { voiceName: "Erinome", description: "Clear" },
+  { voiceName: "Algenib", description: "Gravelly" },
+  { voiceName: "Rasalgethi", description: "Informative" },
+  { voiceName: "Laomedeia", description: "Upbeat" },
+  { voiceName: "Achernar", description: "Soft" },
+  { voiceName: "Alnilam", description: "Firm" },
+  { voiceName: "Schedar", description: "Even" },
+  { voiceName: "Gacrux", description: "Mature" },
+  { voiceName: "Pulcherrima", description: "Forward" },
+  { voiceName: "Achird", description: "Friendly" },
+  { voiceName: "Zubenelgenubi", description: "Casual" },
+  { voiceName: "Vindemiatrix", description: "Gentle" },
+  { voiceName: "Sadachbia", description: "Lively" },
+  { voiceName: "Sadaltager", description: "Knowledgeable" },
+  { voiceName: "Sulafat", description: "Warm" },
+];
