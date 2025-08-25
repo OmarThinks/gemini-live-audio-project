@@ -1,4 +1,4 @@
-const { GoogleGenAI, Modality } = require("@google/genai");
+const { GoogleGenAI, Modality } = require("@google/genai/node");
 require("dotenv").config();
 const cors = require("cors");
 const express = require("express");
@@ -12,46 +12,42 @@ app.get("/", (req, res) => {
   res.send("Hello, Express!");
 });
 
-const client = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
+const client = new GoogleGenAI({
+  apiKey: process.env.GOOGLE_API_KEY,
+  httpOptions: { apiVersion: "v1alpha" },
+});
 
 const models = [
   // Native Audio
-  "models/gemini-2.5-flash-preview-native-audio-dialog",
-  "models/gemini-2.5-flash-exp-native-audio-thinking-dialog",
+  "gemini-2.5-flash-preview-native-audio-dialog",
+  "gemini-2.5-flash-exp-native-audio-thinking-dialog",
 
   // Half cascade audio
-  "models/gemini-live-2.5-flash-preview",
-  "models/gemini-2.0-flash-live-001",
+  "gemini-live-2.5-flash-preview",
+  "gemini-2.0-flash-live-001",
 ];
 
 const model = models[3];
 
 app.get("/session", async (req, res) => {
-  const expireTime = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+  const expireTime = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // one hour from now
 
   const token = await client.authTokens.create({
     config: {
+      uses: 10,
+      expireTime,
+      newSessionExpireTime: expireTime,
       liveConnectConstraints: {
         model,
         config: {
-          generationConfig: {
-            responseModalities: [Modality.AUDIO],
-            speechConfig: {
-              voiceConfig: {
-                prebuiltVoiceConfig: {
-                  voiceName: AvailableVoices[0].voiceName,
-                },
-              },
+          responseModalities: [Modality.AUDIO],
+          systemInstruction: "You are a helpful assistant.",
+          contextWindowCompression: {
+            slidingWindow: {
+              targetTokens: "20000",
             },
           },
-          systemInstruction: { role: "You are a helpful assistant." },
-          contextWindowCompression: {
-            slidingWindow: { targetTokens: "15000" },
-          },
         },
-      },
-      httpOptions: {
-        apiVersion: "v1alpha",
       },
     },
   });

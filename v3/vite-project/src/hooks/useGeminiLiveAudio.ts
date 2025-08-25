@@ -50,7 +50,12 @@ const useGeminiLiveAudio = ({
       }
 
       try {
-        const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${ephemeralKey}`;
+        const urlParams = new URLSearchParams();
+
+        urlParams.append("access_token", ephemeralKey);
+
+        const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContentConstrained?${urlParams.toString()}`;
+
         const ws = new WebSocket(url);
 
         ws.addEventListener("open", () => {
@@ -147,13 +152,13 @@ const useGeminiLiveAudio = ({
   useEffect(() => {
     if (isWebSocketConnected) {
       const serverConfig: LiveClientSetup = {
-        model,
+        model: "models/gemini-2.0-flash-live-001",
         generationConfig: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {
             voiceConfig: {
               prebuiltVoiceConfig: {
-                voiceName: AvailableVoices[0].voiceName,
+                voiceName: "Zephyr",
               },
             },
           },
@@ -164,9 +169,21 @@ const useGeminiLiveAudio = ({
         },
       };
 
-      console.log("sending server config message");
+      const setupConfig: LiveClientSetup = {
+        generationConfig: {
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: {
+                voiceName: "Zephyr",
+              },
+            },
+          },
+        },
+      };
+
+      console.log("sending server config message", webSocketRef.current);
       const message: LiveClientMessage = {
-        setup: serverConfig,
+        setup: setupConfig,
       };
 
       webSocketRef.current?.send(JSON.stringify(message));

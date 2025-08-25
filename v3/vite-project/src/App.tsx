@@ -107,10 +107,14 @@ function App() {
   }, [chunks, playAudio]);
 
   const _connectWebSocket = useCallback(async () => {
-    /*const tokenResponse = await fetch("http://localhost:3000/session");
+    const tokenResponse = await fetch("http://localhost:3000/session");
+    console.log(tokenResponse);
     const data = await tokenResponse.json();
-    const EPHEMERAL_KEY = data.client_secret.value;*/
-    connectWebSocket({ ephemeralKey: import.meta.env.VITE_GOOGLE_API_KEY });
+    console.log(data);
+
+    const EPHEMERAL_KEY = data.token.name;
+    console.log(EPHEMERAL_KEY);
+    connectWebSocket({ ephemeralKey: EPHEMERAL_KEY });
   }, [connectWebSocket]);
 
   useEffect(() => {
